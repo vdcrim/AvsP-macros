@@ -46,7 +46,7 @@ for i, line in enumerate(lines):
         end = avs.GetLineEndPosition(i)
         break
 else:
-    avsp.MsgBox('No MeGUI Trims in file', 'Error')
+    avsp.MsgBox(_('No MeGUI Trims in file'), _('Error'))
     return
 avs.SetSelection(start,end)
 avs.Clear()

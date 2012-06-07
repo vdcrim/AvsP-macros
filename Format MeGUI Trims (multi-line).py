@@ -24,7 +24,7 @@ Doom9 Forum thread: http://forum.doom9.org/showthread.php?t=163653
 
 Changelog:
   v1: initial release
-
+  v2: keep the rest of the line after Trim
 
 Copyright (C) 2012  Diego Fernández Gosende <dfgosende@gmail.com>
 
@@ -45,7 +45,7 @@ with this program.  If not, see <http://www.gnu.org/licenses/gpl-2.0.html>.
 
 import re
 
-re_trim = re.compile(r'trim\(\s*(\d+)\s*,\s*(\d+)\s*\)', re.IGNORECASE)
+re_trim = re.compile(r'trim\(\s*(\d+)\s*,\s*(\d+)\s*\)(.*)', re.IGNORECASE)
 avs = avsp.GetWindow().currentScript
 lines = avsp.GetText().splitlines()
 start, end = 0, 0
@@ -60,7 +60,7 @@ for i, line in enumerate(lines):
         end = avs.GetLineEndPosition(i)
         break
 else:
-    avsp.MsgBox('No MeGUI Trims in file', 'Error')
+    avsp.MsgBox(_('No MeGUI Trims in file'), _('Error'))
     return
 avs.SetSelection(start,end)
 avs.Clear()
@@ -68,6 +68,6 @@ avs.Clear()
 trim_text = 'v = last\n'
 clip = ''
 for i, trim in enumerate(trims):
-    trim_text += 'v.Trim({},{})\np{} = last\n'.format(trim[0], trim[1], i + 1)
+    trim_text += 'v.Trim({},{}){}\np{} = last\n'.format(trim[0], trim[1], trim[2], i + 1)
     clip += 'p{} ++ '.format(i + 1)
 avsp.InsertText(trim_text + clip[:-4], pos=None)
