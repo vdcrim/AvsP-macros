@@ -1,7 +1,7 @@
 AvsP macros
 -----------
 
-A collection of Python macros for [Avspmod](https://github.com/avspmod/avspmod)
+A collection of Python macros for [Avspmod v2.3.0+](https://github.com/avspmod/avspmod). 
 
 Instructions
 ------------
