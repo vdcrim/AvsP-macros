@@ -86,7 +86,7 @@ if ask_fps:
     fps = avsp.GetTextEntry(title=_('Specify the FPS'), 
                             message=_('Introduce the frame rate of the video:'), 
                             default=('23.976', '24', '25', '29.970', '30',
-                                     '50', '59,940', '24'), 
+                                     '50', '59.940', '24'), 
                             types='list_writable', 
                             width=200)
     if fps:
