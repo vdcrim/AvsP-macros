@@ -4,9 +4,8 @@
 Encode the Avisynth script in the current tab with x264.
 
 Requirements:
-    AvsPmod xxx+: http://forum.doom9.org/showthread.php?t=153248
-    avs4x264mod: http://forum.doom9.org/showthread.php?t=162656
-    x264 r2117+: http://x264.nl
+- avs4x264mod: http://forum.doom9.org/showthread.php?t=162656
+- x264 r2117+: http://x264.nl
     
 This macro uses avs4x264mod to pipe the video data to x264. By default, 
 it expects to find "avs4x264mod.exe" and "x264.exe" in the "AvsPmod\tools" 
