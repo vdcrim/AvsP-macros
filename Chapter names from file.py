@@ -13,6 +13,7 @@ Doom9 Forum thread: http://forum.doom9.org/showthread.php?t=163653
 
 Changelog:
   v1: initial release
+  v2: updated prompt dialog. Needs AvsPmod 2.3.0+
 
 
 Copyright (C) 2012  Diego Fernández Gosende <dfgosende@gmail.com>
@@ -45,13 +46,12 @@ chapters_name_filename = ['chapter names.txt', 'chapter_names.txt',
 # ------------------------------------------------------------------------------
 
 
+# run in thread
 from os import listdir
 from os.path import isfile, isdir, dirname, join
 import re
 
 avs = avsp.GetScriptFilename()
-if not avs:
-    return
 chapters_directory = dirname(avs)
 chapters_name_filename += [name.capitalize() for name in chapters_name_filename]
 for path in (join(chapters_directory, name) for name in chapters_name_filename):
@@ -60,10 +60,12 @@ for path in (join(chapters_directory, name) for name in chapters_name_filename):
             break
 else:
     names_file = ''
-options = avsp.GetTextEntry(title = 'Chapter names from file',
-                            message = ['Chapter names file', 
-                                       'Matroska chapter files directory'], 
-                            default = [names_file, chapters_directory])
+txt_filter = (_('Text files') + ' (*.txt)|*.txt|' + _('All files') + '|*.*')
+options = avsp.GetTextEntry(title='Chapter names from file',
+                            message=['Chapter names file', 
+                                     'Matroska chapter files directory'], 
+                            default=[(names_file, txt_filter), chapters_directory], 
+                            types=['file_open', 'dir'])
 if not options:
     return
 if not isfile(options[0]):

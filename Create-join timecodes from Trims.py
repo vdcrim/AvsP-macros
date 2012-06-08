@@ -34,7 +34,8 @@ Doom9 Forum thread: http://forum.doom9.org/showthread.php?t=163653
 Changelog:
   v1: initial release
   v2: support for negative second member of the Trim pair
-
+  v3: updated prompt dialog. Needs AvsPmod 2.3.0+
+      accept spaces between Trim and its parameters
 
 Copyright (C) 2011, 2012  Diego Fernández Gosende <dfgosende@gmail.com>
 
@@ -78,6 +79,7 @@ fps_alias = {'ntsc_film': 24/1.001, 'ntsc_video': 30/1.001}
 # ------------------------------------------------------------------------------
 
 
+# run in thread
 from os.path import splitext, isfile
 from sys import getfilesystemencoding
 import re
@@ -148,14 +150,14 @@ if not avs:
 
 # Parse Trims
 if use_label and prompt_for_label:
-    label = avsp.GetTextEntry(title='Specify the label', 
-                           message='Introduce the label used in the Trims line', 
-                           default=label)  
+    label = avsp.GetTextEntry(title=_('Specify the label'), 
+                        message=_('Introduce the label used in the Trims line'), 
+                        default=label, width=250)  
     if not label:
         return
-re_line = re.compile(r'^[^#]*\bTrim\(\s*(\d+)\s*,\s*(-?\d+)\s*\).*{}'
-                     .format('#.*' + label if use_label else ''), re.IGNORECASE)
-re_trim = re.compile(r'^[^#]*\bTrim\(\s*(\d+)\s*,\s*(-?\d+)\s*\)', re.IGNORECASE)
+re_line = re.compile(r'^[^#]*\bTrim\s*\(\s*(\d+)\s*,\s*(-?\d+)\s*\).*{}'
+                     .format('#.*' + label if use_label else ''), re.I)
+re_trim = re.compile(r'^[^#]*\bTrim\s*\(\s*(\d+)\s*,\s*(-?\d+)\s*\)', re.I)
 for line in (avsp.GetText().splitlines() if parse_avs_top2bottom else 
                                         reversed(avsp.GetText().splitlines())):
     if re_line.search(line):
@@ -173,9 +175,9 @@ for line in (avsp.GetText().splitlines() if parse_avs_top2bottom else
         break
 else:
     if use_label:
-        avsp.MsgBox('No Trims found with label "{}"'.format(label), 'Error')
+        avsp.MsgBox(_('No Trims found with label "{}"').format(label), _('Error'))
     else:
-        avsp.MsgBox('No Trims found in the specified Avisynth script', 'Error')
+        avsp.MsgBox(_('No Trims found in the specified Avisynth script'), _('Error'))
     return
 
 # Prompt for frame rate values
@@ -183,23 +185,28 @@ default = 'ntsc_film'
 for i in range(len(trims) - 1):
     default += ';ntsc_film' if i%2 else ';ntsc_video'
 otc = splitext(avs)[0] + '.tc.txt'
+timecode_filter = (_('Text files') + ' (*.txt)|*.txt|' + _('All files') + '|*.*')
 options = avsp.GetTextEntry(
-    title='Create a timecode file from the {} line with uncommented Trims'
-          .format('first' if parse_avs_top2bottom else 'last'),
-    message=['Set a FPS for each Trim. Alias:\n'
-          'itc: input timecode file, ntsc_film: {}, ntsc_video: {}'
-          .format(fps_alias['ntsc_film'], fps_alias['ntsc_video']), 
-          'Set a FPS to apply to the range of the video outside of the Trims.\n'
-          'Leave blank to only include the range within Trims in the timecode.', 
-          'Output timecode path'],
-    default=[default, default_fps if use_default_fps else '', otc])
+    title=_('Create a timecode file from the {} line with uncommented Trims')
+          .format(_('first') if parse_avs_top2bottom else _('last')),
+    message=[_('Set a FPS for each Trim. Alias:\n'
+               'itc: input timecode file, ntsc_film: {}, ntsc_video: {}')
+             .format(fps_alias['ntsc_film'], fps_alias['ntsc_video']), 
+             _('Set a FPS to apply to the range of the video outside of the '
+               'Trims.\nLeave blank to only include the range within Trims in '
+               'the timecode.'), 
+             _('Output timecode path')],
+    default=[default, default_fps if use_default_fps else '', 
+             (otc, timecode_filter)], 
+    types=['', '', 'file_save'], 
+    width=300)
 if not options:
     return
 
 # Convert FPS values to float
 fps_str_list = options[0].split(';')
 if len(fps_str_list) != len(trims):
-    avsp.MsgBox('Invalid list of FPS', 'Error')
+    avsp.MsgBox(_('Invalid list of FPS'), _('Error'))
     return
 fps_str_list.append(options[1])
 fps_str_list = [fps_str.strip() for fps_str in fps_str_list]
@@ -219,7 +226,7 @@ for i, fps_str in enumerate(fps_str_list):
             fps_frac = [float(i) for i in re.split(r'[:/]', fps_str)]
         except ValueError:
             if i != len(fps_str_list) - 1 and fps_str != '':
-                avsp.MsgBox('Invalid FPS value: {}'.format(fps_str), 'Error')
+                avsp.MsgBox(_('Invalid FPS value: {}').format(fps_str), _('Error'))
                 return
             fps_list.append('')
             continue
@@ -228,19 +235,21 @@ for i, fps_str in enumerate(fps_str_list):
         elif len(fps_frac) == 2:
             fps_list.append(fps_frac[0] / fps_frac[1])
         else:
-            avsp.MsgBox('Invalid FPS value', 'Error')
+            avsp.MsgBox(_('Invalid FPS value'), _('Error'))
             return
 
 # VFR input
 if itc_list:
     message = []
     default = []
+    types = []
     for i in itc_list:
-        message.append('Timecode path for Trim({},{})'.format(*trims[i]))
-        default.append(splitext(avs)[0] + '.txt')
+        message.append(_('Timecode path for Trim({},{})').format(*trims[i]))
+        default.append((splitext(avs)[0] + '.txt', timecode_filter))
+        types.append('file_open')
     itc_list = avsp.GetTextEntry(
-                            title='Introduce the path of the timecode files', 
-                            message=message, default=default)
+                            title=_('Introduce the path of the timecode files'), 
+                            message=message, default=default, types=types)
     if not itc_list:
         return
     
@@ -281,11 +290,11 @@ if itc_list:
                         lines = timecode_v1_to_v2(itc.readlines(), 
                                                   end=trims[-1][1])
                     else:
-                        avsp.MsgBox('Invalid timecode file', 'Error')
+                        avsp.MsgBox(_('Invalid timecode file'), _('Error'))
                         return
             except IOError:
-                avsp.MsgBox("Input timecode file doesn't exist: {}"
-                            .format(itc_list[itc_i].encode(code)), 'Error')
+                avsp.MsgBox(_("Input timecode file doesn't exist: {}")
+                            .format(itc_list[itc_i].encode(code)), _('Error'))
                 return
             new_lines.extend(
                           ['{:.3f}\n'.format(float(line) + float(new_lines[-1]))
