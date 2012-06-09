@@ -1,15 +1,21 @@
 # -*- coding: utf-8 -*-
 
 """
-Apply an Avisynth script to all the JPEG files in a specified directory.
-See PREFERENCES section below.
+Apply the Avisynth script in the current tab to all the selected input 
+files in a specified directory.  Save as an image the current frame of 
+the result afterwards.
 
 
 Latest version: https://github.com/vdcrim/avsp-macros
-Created for http://forum.doom9.org/showthread.php?p=1552739#post1552739
+Created originally for http://forum.doom9.org/showthread.php?p=1552739#post1552739
 
 Changelog:
   v1: initial release
+  v2: fix previous bad cleanup
+      the script is now taken from the current tab
+      not restrict the input files to only JPEG
+      allow specifying a different output directory
+      move all the settings to the prompt
 
 
 Copyright (C) 2012  Diego Fernández Gosende <dfgosende@gmail.com>
@@ -29,44 +35,92 @@ with this program.  If not, see <http://www.gnu.org/licenses/gpl-2.0.html>.
 
 """
 
-# PREFERENCES
-
-suffix = '_new'
-format = '.png'
-jpg_quality = 90
-
-# Avisynth script. Replace the input path with "in_path".
-script = ur"""
-ImageSource("in_path", use_DevIL=true)
-"""
-
 
 # ------------------------------------------------------------------------------
 
 
 # run in thread
-from os import listdir
 from os.path import splitext, basename, join
+from glob import glob
 
-dir_path = avsp.GetDirectory(title=_('Select a directory'))
-if not dir_path:
+# Get defaults
+in_dir = avsp.Options.get('in_dir', '')
+input_list = avsp.Options.get('input_list', 'bmp;png;tif')
+out_dir = avsp.Options.get('out_dir', '')
+out_format = avsp.Options.get('out_format', _('Portable Network Graphics') + ' (*.png)')
+suffix = avsp.Options.get('suffix', '_new')
+quality = avsp.Options.get('quality', 90)
+format_dict = dict([(name[0], ext) for ext, name in avsp.GetWindow().imageFormats.iteritems()])
+
+# Prompt for options
+while True:
+    options = avsp.GetTextEntry(title=_('Images batch processing'), 
+            message=[_('The script in the current tab will be applied to all '
+                       'the input files. \nPlease replace first the input path '
+                       'in your source filter with "input_path", e.g. ImageSource'
+                       '("input_path")'), 
+                     [_('Input files directory'), 
+                      _('Semicolon-separated list of input file extensions')],
+                     [_('Output directory (blank = input directory)'), 
+                      _('Output format')], 
+                     [_('Output files suffix'), 
+                      _('Quality (JPEG only)'), 
+                      _('Save current values as default')]],
+            default=['', [in_dir, input_list], 
+                     [out_dir, sorted(format_dict.keys()) + [out_format]], 
+                     [suffix, (quality, 0, 100)]],
+            types=['sep', ['dir', ''], ['dir', 'list_read_only'], 
+                   ['', 'spin', 'check']],
+            width=500)
+    if not options:
+        return
+    in_dir, input_list, out_dir, out_format, suffix, quality, save_options = options
+    if not in_dir:
+        avsp.MsgBox(_('Select the input files directory'), _('Error'))
+    else: break
+
+# Save options
+if save_options:
+    avsp.Options['in_dir'] = in_dir
+    avsp.Options['input_list'] = input_list
+    avsp.Options['out_dir'] = out_dir
+    avsp.Options['out_format'] = out_format
+    avsp.Options['suffix'] = suffix
+    avsp.Options['quality'] = quality
+
+# Get input files
+paths = []
+for ext in input_list.split(';'):
+    paths.extend(glob(join(in_dir, '*.' + ext)))
+if not paths:
+    avsp.MsgBox(_('No files with the given extensions in the selected input '
+                  'directory'), _('Error'))
     return
-avsp.NewTab()
+
+# Check if the script contains the path wildcard
+script = avsp.GetText()
+if not '"input_path"' in script:
+    avsp.MsgBox(_('Not "input_path" in the script'), _('Error'))
+    return
+
+# Process and save the input files
+if not out_dir:
+    out_dir = in_dir
+ext = format_dict[out_format]
+total = len(paths)
 progress = avsp.ProgressBox(max=1000, title=_('Batch processing progress'))
-paths = [join(dir_path, filename) for filename in filter(
-                               lambda x: x.endswith('.jpg'), listdir(dir_path))]
 for i, path in enumerate(paths):
-    if not progress.Update(i*1000.0/len(paths), basename(path))[0]:
+    if not progress.Update(i*1000.0/total, basename(path))[0]:
         break
-    avsp.SetText(script.replace('in_path', path))
+    avsp.SetText(script.replace('"input_path"', '"{}"'.format(path), 1))
     try:
-        if using_jpg_quality_no_dialog_fix:
-            avsp.SaveImage(splitext(path)[0] + suffix + format, quality=jpg_quality)
-        else:
-            avsp.SaveImage(splitext(path)[0] + suffix + format)
+        avsp.SaveImage(join(out_dir, splitext(basename(path))[0] + suffix + ext), 
+                       quality=quality)
     except:
-        avsp.MsgBox(_('Processing failed at ') + basename(path))
+        avsp.MsgBox(_('Processing failed at ') + basename(path), _('Error'))
         break
+
+# Clean up
 progress.Destroy()
 avsp.HideVideoWindow()
-avsp.CloseTab()
+avsp.SetText(script)
