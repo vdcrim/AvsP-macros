@@ -61,9 +61,9 @@ if not convert_path or not isfile(convert_path):
     avsp.Options['convert_path'] = None
     for parent, dirs, files in walk('tools'):
         for file in files:
-                if file == 'convert.exe':
-                    convert_path = join(getcwdu(), parent, file)
-                    break
+            if file == 'convert.exe':
+                convert_path = join(getcwdu(), parent, file)
+                break
         else:
             continue
         break
@@ -89,7 +89,7 @@ speed_factor = avsp.Options.get('speed_factor', 2)
 select_every = avsp.Options.get('select_every', 4)
 loops = avsp.Options.get('loops', 0)
 use_bm_only = avsp.Options.get('use_bm_only', True)
-dither = avsp.Options.get('dither', 'Ordered + Error correction')
+dither = avsp.Options.get('dither', _('Ordered + Error correction'))
 optimize = avsp.Options.get('optimize', False)
 add_params = avsp.Options.get('add_params', '')
 notify_at_end = avsp.Options.get('notify_at_end', True)
@@ -107,7 +107,7 @@ while True:
     options = avsp.GetTextEntry(
             title=_('Create GIF with ImageMagick'),
             message=[[_('Speed factor'), _('Select every'), _('Loops (0: infinite)')], 
-                     _('Include only the range between bookmarks'), 
+                     _('Include only the range between bookmarks, if any'), 
                      [_('Dithering'), _('Optimize')], 
                      _('Additional parameters (applied before dithering)'),
                      [_('Save current settings as default'), _('Notify when finished')],  
@@ -170,14 +170,25 @@ else:
     gif_range = range(0, avsp.GetVideoFramecount(), select_every)
 
 # Pipe the image data to convert.exe as a multi-image miff file
-# Python 2.x doesn't support unicode args in subprocess.Popen()
-# http://bugs.python.org/issue1759845
-# Encoding to system's locale encoding
+
+# - Issue 1: Python 2.x doesn't support unicode args in subprocess.Popen()
+#   http://bugs.python.org/issue1759845
+#   Encoding to system's locale encoding
+# - Issue 2: handle inheritance issues if any of stdin, stdout or stderr 
+#   but not all three are specified and the process is started under some 
+#   circumstances.
+#   http://www.py2exe.org/index.cgi/Py2ExeSubprocessInteractions
+#   http://bugs.python.org/issue3905
+#   http://bugs.python.org/issue1124861
 code = getfilesystemencoding()
+info = subprocess.STARTUPINFO()
+info.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+info.wShowWindow = subprocess.SW_HIDE
 cmd = subprocess.Popen(ur'"{}" miff:- -dispose None -loop {} -set delay {} {} '
                ur'{} {} "{}"'.format(convert_path, loops, delay, add_params, 
                dither_dict[dither], optimize, output_path).encode(code), 
-               stdin=subprocess.PIPE, creationflags=0x08000000)
+               stdin=subprocess.PIPE, stdout=subprocess.PIPE, 
+               stderr=subprocess.PIPE, startupinfo=info)
 try:
     for frame in gif_range:
         avsp.ShowVideoFrame(frame)
