@@ -24,6 +24,7 @@ Latest version:  https://github.com/vdcrim/avsp-macros
 
 Changelog:
   v1: initial release
+  v2: fix handle inheritance issue
 
 
 Copyright (C) 2012  Diego Fernández Gosende <dfgosende@gmail.com>
