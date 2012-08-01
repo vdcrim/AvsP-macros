@@ -293,6 +293,7 @@ if itc_list:
                         avsp.MsgBox(_('Invalid timecode file'), _('Error'))
                         return
             except IOError:
+                code = getfilesystemencoding()
                 avsp.MsgBox(_("Input timecode file doesn't exist: {}")
                             .format(itc_list[itc_i].encode(code)), _('Error'))
                 return
