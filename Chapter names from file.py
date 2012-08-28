@@ -14,6 +14,7 @@ Doom9 Forum thread: http://forum.doom9.org/showthread.php?t=163653
 Changelog:
   v1: initial release
   v2: updated prompt dialog. Needs AvsPmod 2.3.0+
+  v3: fixes
 
 
 Copyright (C) 2012  Diego Fernández Gosende <dfgosende@gmail.com>
@@ -40,7 +41,9 @@ default_name = r'Chapter'
 
 # Filename list for chapter names file search
 chapters_name_filename = ['chapter names.txt', 'chapter_names.txt', 
-                          'chapters.txt', 'cnames.txt', 'chapters']
+                          'chapters.txt', 'cnames.txt', 'chapters'
+                          'chapter titles.txt', 'chapter_titles.txt', 
+                          'titles.txt', 'ctitles.txt', 'titles']
 
 
 # ------------------------------------------------------------------------------
@@ -55,9 +58,9 @@ avs = avsp.GetScriptFilename()
 chapters_directory = dirname(avs)
 chapters_name_filename += [name.capitalize() for name in chapters_name_filename]
 for path in (join(chapters_directory, name) for name in chapters_name_filename):
-        if isfile(path):
-            names_file = path
-            break
+    if isfile(path):
+        names_file = path
+        break
 else:
     names_file = ''
 txt_filter = (_('Text files') + ' (*.txt)|*.txt|' + _('All files') + '|*.*')
@@ -68,26 +71,33 @@ options = avsp.GetTextEntry(title='Chapter names from file',
                             types=['file_open', 'dir'])
 if not options:
     return
-if not isfile(options[0]):
-    avsp.MsgBox('Chapter names file not found:\n' + options[0])
+else:
+    names_file, chapters_directory = options
+if not isfile(names_file):
+    avsp.MsgBox('Chapter names file not found:\n' + names_file)
     return
-if not isdir(options[1]):
-    avsp.MsgBox('The specified directory does not exist:\n' + options[1])
+if not isdir(chapters_directory):
+    avsp.MsgBox('The specified directory does not exist:\n' + chapters_directory)
     return
-with open(options[0]) as names_file:
+with open(names_file) as names_file:
     names = names_file.readlines()
+xml_list = filter(lambda path: path.endswith('.xml'), listdir(chapters_directory))
 re_chapter = re.compile(
   r'(^.*<ChapterString>)\s*' + default_name + r'\s*(</ChapterString>.*$)')
 chapter = 0
-for path in filter(lambda path: path.endswith('.xml'), listdir(options[1])):
-    with open(join(options[1], path), 'r+') as chapter_file:
+for xml in xml_list:
+    with open(join(chapters_directory, xml), 'r+') as chapter_file:
         lines = chapter_file.readlines()
         for i, line in enumerate(lines):
             res = re_chapter.search(line)
             if res:
+                if len(names) < chapter + 1:
+                    avsp.MsgBox('Not enough chapter names: {} titles, {} files'
+                                .format(len(names), chapter + 1), 'Warning')
+                    return
                 lines[i] = re_chapter.sub(
                            r'\g<1>{}\g<2>'.format(names[chapter].strip()), line)
                 chapter += 1
-        chapter_file.seek(0);return
+        chapter_file.seek(0)
         chapter_file.truncate()
         chapter_file.writelines(lines)
