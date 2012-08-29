@@ -2,8 +2,20 @@
 """
 Create GIF with ImageMagick
 
+Create a GIF from the script in the current tab. The video range can be 
+optionally trimmed by adding pairs of bookmarks and selecting the 'only 
+range between bookmarks' option. The GIF creation may take a while for 
+long clips.
+
+For loading/saving other formats with ImageMagick check out Wilbert's 
+Immaavs AviSynth plugin <http://www.wilbertdijkhof.com>
+
+
 Requirements:
-- convert.exe from ImageMagick <http://www.imagemagick.org>
+- 'convert' executable from ImageMagick <http://www.imagemagick.org>
+
+
+Windows installation:
 
 By default the executable is expected to be found in 'AvsPmod\tools' 
 or one of its subdirectories.  A path will be asked for in the first 
@@ -14,10 +26,10 @@ If you only need ImageMagick for this macro then do the following:
 2) extract only convert.exe
 3) place it on the 'AvsPmod\tools' directory
 
-The GIF creation may take a while for long clips.
 
-For loading/saving other formats with ImageMagick check out Wilbert's 
-Immaavs AviSynth plugin <http://www.wilbertdijkhof.com>
+*nix installation:
+
+Just install ImageMagick on your system.
 
 
 Latest version:  https://github.com/vdcrim/avsp-macros
@@ -25,6 +37,7 @@ Latest version:  https://github.com/vdcrim/avsp-macros
 Changelog:
   v1: initial release
   v2: fix handle inheritance issue
+  v3: AvxSynth compatibility
 
 
 Copyright (C) 2012  Diego Fernández Gosende <dfgosende@gmail.com>
@@ -49,41 +62,45 @@ with this program.  If not, see <http://www.gnu.org/licenses/gpl-2.0.html>.
 
 
 # run in thread
-from os import getcwdu, walk
+from os import getcwdu, walk, name
 from os.path import isfile, splitext, basename, join
 from sys import getfilesystemencoding
 import subprocess
+import shlex
 from collections import OrderedDict
 import wx
 
 # Check convert.exe path
-convert_path = avsp.Options.get('convert_path')
-if not convert_path or not isfile(convert_path):
-    avsp.Options['convert_path'] = None
-    for parent, dirs, files in walk('tools'):
-        for file in files:
-            if file == 'convert.exe':
-                convert_path = join(getcwdu(), parent, file)
-                break
+if name == 'nt':
+    convert_path = avsp.Options.get('convert_path')
+    if not convert_path or not isfile(convert_path):
+        avsp.Options['convert_path'] = None
+        for parent, dirs, files in walk('tools'):
+            for file in files:
+                if file == 'convert.exe':
+                    convert_path = join(getcwdu(), parent, file)
+                    break
+            else:
+                continue
+            break
         else:
-            continue
-        break
-    else:
-        if avsp.MsgBox(_("'convert.exe' from ImageMagick not found\n\n"
-                       "Press 'Accept' to specify a path. Alternatively copy\n"
-                       "the executable to the 'tools' subdirectory."), 
-                     _('Error'), True):
-            convert_path = avsp.GetFilename(_('Select the convert.exe executable'), 
-                                            _('Executable files') + ' (*.exe)|*.exe|' + 
-                                            _('All files') + ' (*.*)|*.*')
-            if convert_path and basename(convert_path) != 'convert.exe':
-                avsp.MsgBox(_('Invalid executable selected: ') + basename(convert_path), 
-                            _('Error'))
-                return
-if convert_path:
-    avsp.Options['convert_path'] = convert_path
+            if avsp.MsgBox(_("'convert.exe' from ImageMagick not found\n\n"
+                           "Press 'Accept' to specify a path. Alternatively copy\n"
+                           "the executable to the 'tools' subdirectory."), 
+                         _('Error'), True):
+                convert_path = avsp.GetFilename(_('Select the convert.exe executable'), 
+                                                _('Executable files') + ' (*.exe)|*.exe|' + 
+                                                _('All files') + ' (*.*)|*.*')
+                if not convert_path:
+                    return
+        avsp.Options['convert_path'] = convert_path
 else:
-    return
+    try:
+        convert_path = subprocess.check_output(['which', 'convert']).splitlines()[0].strip()
+    except:
+        avsp.MsgBox(_("'convert' executable from ImageMagick not found"), 
+                    _('Error'))
+        return
 
 # Prompt for options
 speed_factor = avsp.Options.get('speed_factor', 2)
@@ -182,21 +199,27 @@ else:
 #   http://bugs.python.org/issue3905
 #   http://bugs.python.org/issue1124861
 code = getfilesystemencoding()
-info = subprocess.STARTUPINFO()
-info.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-info.wShowWindow = subprocess.SW_HIDE
-cmd = subprocess.Popen(ur'"{}" miff:- -dispose None -loop {} -set delay {} {} '
-               ur'{} {} "{}"'.format(convert_path, loops, delay, add_params, 
-               dither_dict[dither], optimize, output_path).encode(code), 
-               stdin=subprocess.PIPE, stdout=subprocess.PIPE, 
-               stderr=subprocess.PIPE, startupinfo=info)
+cmd = ur'"{}" miff:- -dispose None -loop {} -set delay {} {} {} {} "{}"'.format(
+      convert_path, loops, delay, add_params, dither_dict[dither], optimize, 
+      output_path).encode(code)
+cmd = shlex.split(cmd)
+if name == 'nt':
+    info = subprocess.STARTUPINFO()
+    info.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+    info.wShowWindow = subprocess.SW_HIDE
+    cmd = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, 
+                           stderr=subprocess.STDOUT, startupinfo=info)
+else:
+    cmd = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, 
+                           stderr=subprocess.STDOUT)
 try:
     for frame in gif_range:
         avsp.ShowVideoFrame(frame)
         bmp = wx.EmptyBitmap(width, height)
         mdc = wx.MemoryDC()
         mdc.SelectObject(bmp)
-        avs.AVI.DrawFrame(frame, mdc.GetHDC())
+        dc = mdc if avsp.GetWindow().version > '2.3.1' else mdc.GetHDC()
+        avs.AVI.DrawFrame(frame, dc)
         img = bmp.ConvertToImage()
         cmd.stdin.write(header + img.GetData())
     cmd.stdin.close()

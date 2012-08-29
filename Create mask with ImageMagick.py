@@ -3,18 +3,6 @@
 """
 Create mask with ImageMagick
 
-Requirements:
-- convert.exe from ImageMagick <http://www.imagemagick.org>
-
-By default the executable is expected to be found in 'AvsPmod\tools' 
-or one of its subdirectories.  A path will be asked for on the first 
-run otherwise.
-
-If you only need ImageMagick for this macro then do the following: 
-1) download the portable static version of IM
-2) extract only convert.exe
-3) place it on the 'AvsPmod\tools' directory
-
 The mask vertices are selected by clicking on the video preview.  If 
 'apply mask to script' is selected, 'Overlay' is inserted using the 
 last assigned variable as the overlay clip and 'last' as the overlayed.  
@@ -32,10 +20,32 @@ turns into:
   Overlay(alt, mask=mask, mode="blend")
 
 
+Requirements:
+- 'convert' executable from ImageMagick <http://www.imagemagick.org>
+
+
+Windows installation:
+
+By default the executable is expected to be found in 'AvsPmod\tools' 
+or one of its subdirectories.  A path will be asked for on the first 
+run otherwise.
+
+If you only need ImageMagick for this macro then do the following: 
+1) download the portable static version of IM
+2) extract only convert.exe
+3) place it on the 'AvsPmod\tools' directory
+
+
+*nix installation:
+
+Just install ImageMagick on your system.
+
+
 Latest version:  https://github.com/vdcrim/avsp-macros
 
 Changelog:
   v1: initial release
+  v2: AvxSynth compatibility
 
 
 Copyright (C) 2012  Diego Fernández Gosende <dfgosende@gmail.com>
@@ -61,40 +71,42 @@ with this program.  If not, see <http://www.gnu.org/licenses/gpl-2.0.html>.
 
 # run in thread
 from sys import getfilesystemencoding
-from os import getcwdu, walk
+from os import getcwdu, walk, name
 from os.path import isfile, basename, join
 import subprocess
 import re
-import wx
 
 # Check convert.exe path
-convert_path = avsp.Options.get('convert_path')
-if not convert_path or not isfile(convert_path):
-    avsp.Options['convert_path'] = None
-    for parent, dirs, files in walk('tools'):
-        for file in files:
-            if file == 'convert.exe':
-                convert_path = join(getcwdu(), parent, file)
-                break
+if name == 'nt':
+    convert_path = avsp.Options.get('convert_path')
+    if not convert_path or not isfile(convert_path):
+        avsp.Options['convert_path'] = None
+        for parent, dirs, files in walk('tools'):
+            for file in files:
+                if file == 'convert.exe':
+                    convert_path = join(getcwdu(), parent, file)
+                    break
+            else:
+                continue
+            break
         else:
-            continue
-        break
-    else:
-        if avsp.MsgBox(_("'convert.exe' from ImageMagick not found\n\n"
-                       "Press 'Accept' to specify a path. Alternatively copy\n"
-                       "the executable to the 'tools' subdirectory."), 
-                     _('Error'), True):
-            convert_path = avsp.GetFilename(_('Select the convert.exe executable'), 
-                                            _('Executable files') + ' (*.exe)|*.exe|' + 
-                                            _('All files') + ' (*.*)|*.*')
-            if convert_path and basename(convert_path) != 'convert.exe':
-                avsp.MsgBox(_('Invalid executable selected: ') + basename(convert_path), 
-                            _('Error'))
-                return
-if convert_path:
-    avsp.Options['convert_path'] = convert_path
+            if avsp.MsgBox(_("'convert.exe' from ImageMagick not found\n\n"
+                           "Press 'Accept' to specify a path. Alternatively copy\n"
+                           "the executable to the 'tools' subdirectory."), 
+                         _('Error'), True):
+                convert_path = avsp.GetFilename(_('Select the convert.exe executable'), 
+                                                _('Executable files') + ' (*.exe)|*.exe|' + 
+                                                _('All files') + ' (*.*)|*.*')
+                if not convert_path:
+                    return
+        avsp.Options['convert_path'] = convert_path
 else:
-    return
+    try:
+        convert_path = subprocess.check_output(['which', 'convert']).splitlines()[0].strip()
+    except:
+        avsp.MsgBox(_("'convert' executable from ImageMagick not found"), 
+                    _('Error'))
+        return
 
 # Get options
 mask_path = avsp.GetScriptFilename()
@@ -116,7 +128,7 @@ while True:
 mask_path, blur, apply_mask, refresh_preview = options
 if not mask_path.endswith('.png'):
     mask_path = mask_path + '.png'
-blur = '-blur 0x{}'.format(blur) if blur else ''
+blur = ('-blur', '0x{}'.format(blur)) if blur else ('',) * 2
 
 # Search for the overlay clip
 avs_text = avsp.GetText()
@@ -168,26 +180,28 @@ avs.Clear()
 #   http://www.py2exe.org/index.cgi/Py2ExeSubprocessInteractions
 #   http://bugs.python.org/issue3905
 #   http://bugs.python.org/issue1124861
+cmd = [convert_path, '-type', 'Grayscale', '-depth', '8', '-size', 
+       '{}x{}'.format(width, height), 'xc:black', '-fill', 'white', '-draw', 
+       'polygon {}'.format(' '.join(['{},{}'.format(x, y) for x, y in points])),
+       blur[0], blur[1], mask_path]
 code = getfilesystemencoding()
-info = subprocess.STARTUPINFO()
-info.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-info.wShowWindow = subprocess.SW_HIDE
-cmd = subprocess.Popen(u'"{}" -type Grayscale -depth 8 -size {}x{} xc:black '
-                       u'-fill white -draw "polygon {}" {} "{}"'.format(
-                       convert_path, width, height, 
-                       ' '.join(['{},{}'.format(x, y) for x, y in points]), 
-                       blur, mask_path).encode(code), 
-                       stdin=subprocess.PIPE, stdout=subprocess.PIPE, 
-                       stderr=subprocess.STDOUT, startupinfo=info)
+cmd = [arg.encode(code) for arg in cmd]
+if name == 'nt':
+    info = subprocess.STARTUPINFO()
+    info.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+    info.wShowWindow = subprocess.SW_HIDE
+    cmd = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, 
+                           stderr=subprocess.STDOUT, startupinfo=info)
+else:
+    cmd = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, 
+                           stderr=subprocess.STDOUT)
 
-# Insert the mask in the script
-if apply_mask:
-    stdout = cmd.communicate()[0]
-    if cmd.returncode:
-        avsp.MsgBox(_('Mask creation failed:\n' + stdout), _('Error'))
-    else:
-        avsp.InsertText(u'mask=ImageSource("{}")\n'
-                        u'Overlay({}, mask=mask, mode="blend")\n'
-                        .format(mask_path, clip))
-        if refresh_preview:
-            avsp.UpdateVideo()
+# Wait for the mask to be created and insert it in the script
+stdout = cmd.communicate()[0]
+if cmd.returncode:
+    avsp.MsgBox(_('Mask creation failed:\n' + stdout), _('Error'))
+elif apply_mask:
+    avsp.InsertText(u'mask={}\nOverlay({}, mask=mask, mode="blend")\n'
+                    .format(avsp.GetSourceString(mask_path), clip))
+    if refresh_preview:
+        avsp.UpdateVideo()
