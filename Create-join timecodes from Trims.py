@@ -252,6 +252,8 @@ if itc_list:
                             message=message, default=default, types=types)
     if not itc_list:
         return
+    if len(message) == 1:
+        itc_list = [itc_list]
     
     # Generate all intervals if the range outside of Trims is also included
     if fps_list[-1]:
