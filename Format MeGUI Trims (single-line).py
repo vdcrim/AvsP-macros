@@ -53,5 +53,5 @@ avs.Clear()
 
 trims_text = ''
 for trim in trims:
-    trims_text += 'Trim({},{})++'.format(*trim)
+    trims_text += 'Trim({0},{1})++'.format(*trim)
 avsp.InsertText(trims_text[:-2], pos=None)

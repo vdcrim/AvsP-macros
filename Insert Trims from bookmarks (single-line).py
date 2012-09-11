@@ -40,7 +40,7 @@ bm_list.sort()
 trims = ''
 for i, bm in enumerate(bm_list):
     if i%2:
-        trims += 'Trim({},{})++'.format(bm_list[i - 1], bm)
+        trims += 'Trim({0},{1})++'.format(bm_list[i - 1], bm)
 if not i%2 and not avsp.MsgBox(_('Odd number of bookmarks'), _('Warning'), True):
     return
 avsp.InsertText(trims[:-2], pos=None)

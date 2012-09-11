@@ -67,7 +67,6 @@ from os.path import isfile, splitext, basename, join
 from sys import getfilesystemencoding
 import subprocess
 import shlex
-from collections import OrderedDict
 import wx
 
 # Check convert.exe path
@@ -93,6 +92,7 @@ if name == 'nt':
                                                 _('All files') + ' (*.*)|*.*')
                 if not convert_path:
                     return
+            else: return
         avsp.Options['convert_path'] = convert_path
 else:
     try:
@@ -111,12 +111,11 @@ dither = avsp.Options.get('dither', _('Ordered + Error correction'))
 optimize = avsp.Options.get('optimize', False)
 add_params = avsp.Options.get('add_params', '')
 notify_at_end = avsp.Options.get('notify_at_end', True)
-dither_dict = OrderedDict([[_('None'), '+dither'], 
-               [_('Riemersma'), '-dither Riemersma'], 
-               [_('Floyd-Steinberg'), '-dither FloydSteinberg'], 
-               [_('Ordered'), '-ordered-dither o8x8,16,16,8'], 
-               [_('Ordered + Error correction'), '-ordered-dither o8x8,28,28,14'], 
-               ])
+dither_list = [_('None'), _('Riemersma'), _('Floyd-Steinberg'), _('Ordered'), 
+               _('Ordered + Error correction')]
+dither_cmd =  ('+dither', '-dither Riemersma', '-dither FloydSteinberg', 
+               '-ordered-dither o8x8,16,16,8', '-ordered-dither o8x8,28,28,14')
+dither_dict = dict(zip(dither_list, dither_cmd))
 output_path = avsp.GetScriptFilename()
 if output_path:
     output_path = splitext(output_path)[0] + '.gif' 
@@ -134,7 +133,7 @@ while True:
             default=[[(speed_factor, 0, None, 2, 0.25), 
                       (select_every, 1), (loops, 0)], 
                      use_bm_only, 
-                     [dither_dict.keys() + [dither], optimize], 
+                     [dither_list + [dither], optimize], 
                      add_params, [False, notify_at_end], (output_path, gif_filter)
                     ], 
             types=[['spin', 'spin', 'spin'], 'check', ['list_read_only', 'check'], 
@@ -170,7 +169,7 @@ delay = float(100) / avsp.GetVideoFramerate() * select_every / speed_factor
 avs = avsp.GetWindow().currentScript
 width = avsp.GetVideoWidth()
 height = avsp.GetVideoHeight()
-header='id=ImageMagick columns={} rows={}\n\f:\x1A'.format(width, height)
+header='id=ImageMagick columns={0} rows={1}\n\f:\x1A'.format(width, height)
 if use_bm_only:
     bmlist = avsp.GetBookmarkList()
     if not bmlist:
@@ -199,14 +198,19 @@ else:
 #   http://bugs.python.org/issue3905
 #   http://bugs.python.org/issue1124861
 code = getfilesystemencoding()
-cmd = ur'"{}" miff:- -dispose None -loop {} -set delay {} {} {} {} "{}"'.format(
+cmd = ur'"{0}" miff:- -dispose None -loop {1} -set delay {2} {3} {4} {5} "{6}"'.format(
       convert_path, loops, delay, add_params, dither_dict[dither], optimize, 
       output_path).encode(code)
 cmd = shlex.split(cmd)
 if name == 'nt':
     info = subprocess.STARTUPINFO()
-    info.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-    info.wShowWindow = subprocess.SW_HIDE
+    try:
+        info.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        info.wShowWindow = subprocess.SW_HIDE
+    except AttributeError:
+        import _subprocess
+        info.dwFlags |= _subprocess.STARTF_USESHOWWINDOW
+        info.wShowWindow = _subprocess.SW_HIDE
     cmd = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, 
                            stderr=subprocess.STDOUT, startupinfo=info)
 else:

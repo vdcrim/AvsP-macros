@@ -92,11 +92,11 @@ for xml in xml_list:
             res = re_chapter.search(line)
             if res:
                 if len(names) < chapter + 1:
-                    avsp.MsgBox('Not enough chapter names: {} titles, {} files'
+                    avsp.MsgBox('Not enough chapter names: {0} titles, {1} files'
                                 .format(len(names), chapter + 1), 'Warning')
                     return
                 lines[i] = re_chapter.sub(
-                           r'\g<1>{}\g<2>'.format(names[chapter].strip()), line)
+                           r'\g<1>{0}\g<2>'.format(names[chapter].strip()), line)
                 chapter += 1
         chapter_file.seek(0)
         chapter_file.truncate()

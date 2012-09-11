@@ -100,8 +100,9 @@ avs = avsp.GetWindow().currentScript
 avs.SetSelection(avs.PositionFromLine(avs.GetLineCount() - 1), -1)
 avs.Clear()
 if xy:
-    avsp.InsertText(u'Overlay({}, mask=GraMaMa(mode={}, a={}, b={}, rad={}, '
-                     'rad2={}, binarize={}).Invert(), mode="blend")\n'.format(
-                     clip, mode, xy[0][0], xy[0][1], rad, rad2, binarize))
+    avsp.InsertText(u'Overlay({0}, mask=GraMaMa(mode={1}, a={2}, b={3}, '
+                     'rad={4}, rad2={5}, binarize={6}).Invert(), mode="blend")'
+                     '\n'.format(clip, mode, xy[0][0], xy[0][1], rad, rad2, 
+                     binarize))
     if refresh_preview:
         avsp.UpdateVideo()

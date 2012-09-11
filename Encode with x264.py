@@ -277,7 +277,7 @@ for line in avsp.GetText().splitlines():
     if re_match:
         zones_params = re_match.group(1).replace(' ', '')
         for trim in re_zones_trim.findall(line):
-            zones += '{},{},{}/'.format(trim[0], trim[1], zones_params)
+            zones += '{0},{1},{2}/'.format(trim[0], trim[1], zones_params)
     
     re_match = re_add_params.search(line)
     if re_match:
@@ -433,7 +433,7 @@ else:
     except ValueError:
         darx, dary = map(float, re.search( r'(\S+)\s*[:/]\s*(\S+)', dar).groups())
     if input_depth != '8': darx *= 2
-    sar = ' --sar {}:{}'.format(*best_rationals(darx * avsp.GetVideoHeight() / 
+    sar = ' --sar {0}:{1}'.format(*best_rationals(darx * avsp.GetVideoHeight() / 
                                                 dary / avsp.GetVideoWidth()))
 if options[5] == 'Progressive':
     scan_type = ''
@@ -498,7 +498,7 @@ if check_depth:
         avsp.MsgBox(_('Incorrect input color depth (8)'), _('Error'))
         return
     if input_depth != '8' and not out_16:
-        avsp.MsgBox(_('Missing "{}" call or incorrect input color depth')
+        avsp.MsgBox(_('Missing "{0}" call or incorrect input color depth')
                     .format(out_16_str), _('Error'))
         return
 
@@ -537,7 +537,7 @@ if save_avs_copy:
 # Start the encoding process
 start = 'start ' + start_params + (' /b' if hide_cmd else '')
 cmd = ' cmd ' + ('/k "' if keep_cmd_open and not hide_cmd else '/c "')
-end_notice =  ' && start echo {}"'.format(_('Encoding of "{}" finished').format(
+end_notice =  ' && start echo {0}"'.format(_('Encoding of "{0}" finished').format(
                             basename(output))).encode(code) if hide_cmd else '"'
 args = (' "' + avs4x264mod_path + '"' + 
         ' --x264-binary "' + x264_path + '"' + 
@@ -565,7 +565,7 @@ if mode == 'crf':
           log_crf + end_notice, shell=True).wait():
         avsp.MsgBox(_('Shell error'), _('Error'))   
 else:
-    stats_file = '"{}"'.format(avs_no_ext + '.pass1.stats')
+    stats_file = '"{0}"'.format(avs_no_ext + '.pass1.stats')
     if Popen(start + cmd + args + ' --output NUL' + ' --stats ' + stats_file + 
           ' --pass 1' + log_pass1 + ' &&' + args + 
           ' --output "' + output.encode(code) + '"' + ' --stats ' + stats_file +

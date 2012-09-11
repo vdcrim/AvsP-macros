@@ -41,9 +41,9 @@ trim_text = 'v = last\n'
 clip = ''
 for i, bm in enumerate(bm_list):
     if i%2:
-        trim_text += 'v.Trim({},{})\np{} = last\n'.format(bm_list[i - 1], 
-                                                        bm, i//2 + 1)
-        clip += 'p{} ++ '.format(i//2 + 1)
+        trim_text += 'v.Trim({0},{1})\np{2} = last\n'.format(bm_list[i - 1], 
+                                                             bm, i//2 + 1)
+        clip += 'p{0} ++ '.format(i//2 + 1)
 if not i%2 and not avsp.MsgBox(_('Odd number of bookmarks'), _('Warning'), True):
     return
 avsp.InsertText(trim_text + clip[:-4], pos=None)

@@ -135,7 +135,7 @@ def timecode_v1_to_v2(lines, offset=0, start=0, end=None, default=24/1.001):
     for inter in all_inters:
         ms = 1000.0 / inter[2]
         for i in range(1, inter[1] - inter[0] + 2):
-            v2.append('{:.3f}\n'.format(ms * i + offset))
+            v2.append('{0:.3f}\n'.format(ms * i + offset))
         offset = float(v2[-1])
     return v2
 
@@ -155,7 +155,7 @@ if use_label and prompt_for_label:
                         default=label, width=250)  
     if not label:
         return
-re_line = re.compile(r'^[^#]*\bTrim\s*\(\s*(\d+)\s*,\s*(-?\d+)\s*\).*{}'
+re_line = re.compile(r'^[^#]*\bTrim\s*\(\s*(\d+)\s*,\s*(-?\d+)\s*\).*{0}'
                      .format('#.*' + label if use_label else ''), re.I)
 re_trim = re.compile(r'^[^#]*\bTrim\s*\(\s*(\d+)\s*,\s*(-?\d+)\s*\)', re.I)
 for line in (avsp.GetText().splitlines() if parse_avs_top2bottom else 
@@ -175,7 +175,7 @@ for line in (avsp.GetText().splitlines() if parse_avs_top2bottom else
         break
 else:
     if use_label:
-        avsp.MsgBox(_('No Trims found with label "{}"').format(label), _('Error'))
+        avsp.MsgBox(_('No Trims found with label "{0}"').format(label), _('Error'))
     else:
         avsp.MsgBox(_('No Trims found in the specified Avisynth script'), _('Error'))
     return
@@ -187,10 +187,10 @@ for i in range(len(trims) - 1):
 otc = splitext(avs)[0] + '.tc.txt'
 timecode_filter = (_('Text files') + ' (*.txt)|*.txt|' + _('All files') + '|*.*')
 options = avsp.GetTextEntry(
-    title=_('Create a timecode file from the {} line with uncommented Trims')
+    title=_('Create a timecode file from the {0} line with uncommented Trims')
           .format(_('first') if parse_avs_top2bottom else _('last')),
     message=[_('Set a FPS for each Trim. Alias:\n'
-               'itc: input timecode file, ntsc_film: {}, ntsc_video: {}')
+               'itc: input timecode file, ntsc_film: {0}, ntsc_video: {1}')
              .format(fps_alias['ntsc_film'], fps_alias['ntsc_video']), 
              _('Set a FPS to apply to the range of the video outside of the '
                'Trims.\nLeave blank to only include the range within Trims in '
@@ -226,7 +226,7 @@ for i, fps_str in enumerate(fps_str_list):
             fps_frac = [float(i) for i in re.split(r'[:/]', fps_str)]
         except ValueError:
             if i != len(fps_str_list) - 1 and fps_str != '':
-                avsp.MsgBox(_('Invalid FPS value: {}').format(fps_str), _('Error'))
+                avsp.MsgBox(_('Invalid FPS value: {0}').format(fps_str), _('Error'))
                 return
             fps_list.append('')
             continue
@@ -244,7 +244,7 @@ if itc_list:
     default = []
     types = []
     for i in itc_list:
-        message.append(_('Timecode path for Trim({},{})').format(*trims[i]))
+        message.append(_('Timecode path for Trim({0},{1})').format(*trims[i]))
         default.append((splitext(avs)[0] + '.txt', timecode_filter))
         types.append('file_open')
     itc_list = avsp.GetTextEntry(
@@ -296,15 +296,15 @@ if itc_list:
                         return
             except IOError:
                 code = getfilesystemencoding()
-                avsp.MsgBox(_("Input timecode file doesn't exist: {}")
+                avsp.MsgBox(_("Input timecode file doesn't exist: {0}")
                             .format(itc_list[itc_i].encode(code)), _('Error'))
                 return
             new_lines.extend(
-                          ['{:.3f}\n'.format(float(line) + float(new_lines[-1]))
+                          ['{0:.3f}\n'.format(float(line) + float(new_lines[-1]))
                            for line in lines[:trims[i][1] - trims[i][0] + 1]])
         else:
             new_lines.extend(
-                     ['{:.3f}\n'.format(1000.0 / fps * j + float(new_lines[-1])) 
+                     ['{0:.3f}\n'.format(1000.0 / fps * j + float(new_lines[-1])) 
                       for j in range(1, trims[i][1] - trims[i][0] + 2)])
 
     with open(options[2], mode='w') as otc:
@@ -312,15 +312,15 @@ if itc_list:
 
 # CFR input
 else:
-    new_lines = ['# timecode format v1\n', 'assume {}\n'.format(
+    new_lines = ['# timecode format v1\n', 'assume {0}\n'.format(
                                 fps_list[-1] if fps_list[-1] else 24000.0/1001)]
     if fps_list[-1]:  # All video range
-        new_lines.extend('{},{},{:.12g}\n'.format(trim[0], trim[1], fps_list[i]) 
+        new_lines.extend('{0},{1},{2:.12g}\n'.format(trim[0], trim[1], fps_list[i]) 
                          for i, trim in enumerate(trims))
     else:  # Only Trims
         shift = trims[0][0]
         for i, trim in enumerate(trims):
-            new_lines.append('{},{},{:.12g}\n'.format(
+            new_lines.append('{0},{1},{2:.12g}\n'.format(
                              trim[0] - shift, trim[1] - shift, fps_list[i]))
             try:
                 shift += trims[i + 1][0] - trim[1] -1

@@ -99,6 +99,7 @@ if name == 'nt':
                                                 _('All files') + ' (*.*)|*.*')
                 if not convert_path:
                     return
+            else: return
         avsp.Options['convert_path'] = convert_path
 else:
     try:
@@ -128,7 +129,7 @@ while True:
 mask_path, blur, apply_mask, refresh_preview = options
 if not mask_path.endswith('.png'):
     mask_path = mask_path + '.png'
-blur = ('-blur', '0x{}'.format(blur)) if blur else ('',) * 2
+blur = ('-blur', '0x{0}'.format(blur)) if blur else ('',) * 2
 
 # Search for the overlay clip
 avs_text = avsp.GetText()
@@ -181,15 +182,20 @@ avs.Clear()
 #   http://bugs.python.org/issue3905
 #   http://bugs.python.org/issue1124861
 cmd = [convert_path, '-type', 'Grayscale', '-depth', '8', '-size', 
-       '{}x{}'.format(width, height), 'xc:black', '-fill', 'white', '-draw', 
-       'polygon {}'.format(' '.join(['{},{}'.format(x, y) for x, y in points])),
+       '{0}x{1}'.format(width, height), 'xc:black', '-fill', 'white', '-draw', 
+       'polygon {0}'.format(' '.join(['{0},{1}'.format(x, y) for x, y in points])),
        blur[0], blur[1], mask_path]
 code = getfilesystemencoding()
 cmd = [arg.encode(code) for arg in cmd]
 if name == 'nt':
     info = subprocess.STARTUPINFO()
-    info.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-    info.wShowWindow = subprocess.SW_HIDE
+    try:
+        info.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        info.wShowWindow = subprocess.SW_HIDE
+    except AttributeError:
+        import _subprocess
+        info.dwFlags |= _subprocess.STARTF_USESHOWWINDOW
+        info.wShowWindow = _subprocess.SW_HIDE
     cmd = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, 
                            stderr=subprocess.STDOUT, startupinfo=info)
 else:
@@ -201,7 +207,7 @@ stdout = cmd.communicate()[0]
 if cmd.returncode:
     avsp.MsgBox(_('Mask creation failed:\n' + stdout), _('Error'))
 elif apply_mask:
-    avsp.InsertText(u'mask={}\nOverlay({}, mask=mask, mode="blend")\n'
+    avsp.InsertText(u'mask={0}\nOverlay({1}, mask=mask, mode="blend")\n'
                     .format(avsp.GetSourceString(mask_path), clip))
     if refresh_preview:
         avsp.UpdateVideo()

@@ -88,8 +88,8 @@ digits = len(str(len(bm_list) - 1))
 text = avsp.GetText()
 avs_list = []
 for i, bm in enumerate(bm_list[:-1]):
-    avs_path = u'{}_{:0{}}.avs'.format(avs, i+1, digits)
+    avs_path = u'{0}_{1:0{2}}.avs'.format(avs, i+1, digits)
     avs_list.append(avs_path)
     with codecs.open(avs_path, 'w', 'utf-8') as f:
-        f.write(text + '\nTrim({},{})\n'.format(bm, bm_list[i+1] - 1))
+        f.write(text + '\nTrim({0},{1})\n'.format(bm, bm_list[i+1] - 1))
 return avs_list

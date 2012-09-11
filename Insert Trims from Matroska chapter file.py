@@ -118,9 +118,9 @@ while True:
     if 1000 / fps * i >= chapters_ms[j]:
         if abs(1000 / fps * i - chapters_ms[j]) < abs(1000 / fps * (i - 1) - 
                                                       chapters_ms[j]):
-            trims += '{})++Trim({},'.format(i - 1, i)
+            trims += '{0})++Trim({1},'.format(i - 1, i)
         else:
-            trims += '{})++Trim({},'.format(i - 2, i - 1)
+            trims += '{0})++Trim({1},'.format(i - 2, i - 1)
         if j + 1 == len(chapters_ms):
             break
         j += 1

@@ -44,7 +44,7 @@ refresh = True  # update and show if hidden the video preview
 
 
 # run in thread
-from collections import Counter
+from collections import defaultdict
 import wx
 
 def autocrop(samples=10, tol=70, overcrop=True, insert=True, refresh=True, 
@@ -75,7 +75,6 @@ def autocrop(samples=10, tol=70, overcrop=True, insert=True, refresh=True,
         avsp.Options['refresh'] = refresh
 
     # Get crop values for a number of frames
-    width, height = avsp.GetVideoWidth(), avsp.GetVideoHeight()
     frames = avsp.GetVideoFramecount()
     avs = avsp.GetWindow().currentScript
     left_values, top_values, right_values, bottom_values = [], [], [], []
@@ -103,7 +102,7 @@ def autocrop(samples=10, tol=70, overcrop=True, insert=True, refresh=True,
         final_crop_values.append(value)
     if insert:
         txt = '' if avsp.GetText().endswith('\n') else '\n'
-        avsp.InsertText(txt + 'Crop({}, {}, -{}, -{})'.format(*final_crop_values))
+        avsp.InsertText(txt + 'Crop({0}, {1}, -{2}, -{3})'.format(*final_crop_values))
         if refresh:
             avsp.ShowVideoFrame(forceRefresh=True)
     return final_crop_values
@@ -169,11 +168,14 @@ def autocrop_frame(frame, tol=70):
 def get_crop_value(seq):
     """Get the most repeated value on a sequence if it repeats more than 50%, 
     the minimum value otherwise"""
-    max = Counter(seq).most_common(1)[0]
-    if max[1] > len(seq) / 2:
-        return max[0]
+    d = defaultdict(int)
+    for i in seq:
+        d[i] += 1
+    max = sorted(d.keys(), key=lambda x:-d[x])[0]
+    if d[max] > len(seq) / 2:
+        return max
     else:
-        ret_val = max[0]
+        ret_val = max
         for value in seq:
             if value < ret_val:
                 ret_val = value
