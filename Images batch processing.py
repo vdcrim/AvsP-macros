@@ -112,7 +112,7 @@ progress = avsp.ProgressBox(max=1000, title=_('Batch processing progress'))
 for i, path in enumerate(paths):
     if not progress.Update(i*1000.0/total, basename(path))[0]:
         break
-    avsp.SetText(script.replace('"input_path"', '"{0}"'.format(path), 1))
+    avsp.SetText(script.replace('"input_path"', u'"{0}"'.format(path), 1))
     try:
         avsp.SaveImage(join(out_dir, splitext(basename(path))[0] + suffix + ext), 
                        quality=quality)
