@@ -129,7 +129,7 @@ while True:
 mask_path, blur, apply_mask, refresh_preview = options
 if not mask_path.endswith('.png'):
     mask_path = mask_path + '.png'
-blur = ('-blur', '0x{0}'.format(blur)) if blur else ('',) * 2
+blur = ('-blur', '0x{0}'.format(blur)) if blur else None
 
 # Search for the overlay clip
 avs_text = avsp.GetText()
@@ -183,8 +183,9 @@ avs.Clear()
 #   http://bugs.python.org/issue1124861
 cmd = [convert_path, '-type', 'Grayscale', '-depth', '8', '-size', 
        '{0}x{1}'.format(width, height), 'xc:black', '-fill', 'white', '-draw', 
-       'polygon {0}'.format(' '.join(['{0},{1}'.format(x, y) for x, y in points])),
-       blur[0], blur[1], mask_path]
+       'polygon {0}'.format(' '.join(['{0},{1}'.format(x, y) for x, y in points]))]
+if blur: cmd.extend(blur)
+cmd.append(mask_path)
 code = getfilesystemencoding()
 cmd = [arg.encode(code) for arg in cmd]
 if name == 'nt':
