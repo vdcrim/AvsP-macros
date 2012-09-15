@@ -21,11 +21,13 @@ The output timecode can span all the video range or only the trimmed
 zones.  For the former you also need to assign a FPS to the video range 
 outside of the Trims.
 
-There are two ways of specifying the line of the avs used:
-· Parse the avs from top to bottom or vice versa, and use the first 
-  line with Trims found.
-· Use a line with a specific comment at the end, e.g:
+There are three ways of specifying the line of the avs used:
+- Parse the avs from top to bottom (default) or vice versa, and use the 
+  first line with Trims found.
+- Use a line with a specific comment at the end, e.g:
   Trim(0,99)++Trim(200,499)  # ivtc
+  It can be combined with a parsing order.
+- Directly specifying the Trims line number, starting with 1.
 
 
 Latest version:     https://github.com/vdcrim/avsp-macros
@@ -36,6 +38,8 @@ Changelog:
   v2: support for negative second member of the Trim pair
   v3: updated prompt dialog. Needs AvsPmod 2.3.0+
       accept spaces between Trim and its parameters
+      accept selecting the Trims line by specifying directly the line number
+
 
 Copyright (C) 2011, 2012  Diego Fernández Gosende <dfgosende@gmail.com>
 
@@ -58,15 +62,6 @@ with this program.  If not, see <http://www.gnu.org/licenses/gpl-2.0.html>.
 
 # Save the avs script before starting
 save_avs = True
-
-# Avisynth script parsing order
-parse_avs_top2bottom = True
-
-# Only match the Trims line with 'label' as commentary
-# e.g: Trim(0,99)++Trim(200,499)  # ivtc
-use_label = False
-prompt_for_label = True  # Only for use_label = True
-label = 'ivtc'
 
 # Default FPS for the video range outside of the Trims
 default_fps = '24000/1001'
@@ -139,69 +134,106 @@ def timecode_v1_to_v2(lines, offset=0, start=0, end=None, default=24/1.001):
         offset = float(v2[-1])
     return v2
 
-if not avsp.GetScriptFilename():
-    if not avsp.SaveScript():
+def ask_trim_options():
+    '''Prompt for the Trims line selection options'''
+    reversed_ = avsp.Options.get('reversed_', False)
+    use_label = avsp.Options.get('use_label', False)
+    label = avsp.Options.get('label', 'ivtc')
+    use_line = avsp.Options.get('use_line', False)
+    line_number = avsp.Options.get('line_number', 1)
+    lines = avsp.GetText().splitlines()
+    options = avsp.GetTextEntry(title=_('Trims line selection options'), 
+            message=[ _('Parse script from bottom to top instead of top to bottom '
+                       'for a line with Trims'),
+                     [_('Use the Trims line with #label'), _('Label')],
+                     [_('Specify directly a line'), _('Line number')]], 
+            default=[reversed_, [use_label, label],
+                     [use_line, (line_number, 1, len(lines))]], 
+            types=['check', 'check', ['check', 'spin']])
+    if not options:
         return
+    (avsp.Options['reversed_'], avsp.Options['use_label'], avsp.Options['label'], 
+     avsp.Options['use_line'], avsp.Options['line_number']) = options
+    return options
+
+def parse_trims(reversed_=None, use_label=None, label='', use_line=None, line_number=1):
+    '''Parse script for a Trims line'''
+    lines = avsp.GetText().splitlines()
+    if use_line:
+        use_label = False
+        lines = lines[line_number - 1:line_number]
+    re_line = re.compile(r'^[^#]*\bTrim\s*\(\s*(\d+)\s*,\s*(-?\d+)\s*\).*{0}'
+                         .format('#\s*' + label if use_label else ''), re.I)
+    re_trim = re.compile(r'^[^#]*\bTrim\s*\(\s*(\d+)\s*,\s*(-?\d+)\s*\)', re.I)
+    for line in (reversed(lines) if reversed_ else lines):
+        if re_line.search(line):
+            trims = []
+            end = len(line)
+            while(1):
+                res = re_trim.search(line[:end])
+                if res is None:
+                    break
+                else:
+                    trims.append(res.groups())
+                    end = res.start(1)
+            trims = [(int(trim[0]), int(trim[1]) if int(trim[1]) > 0 else 
+                       int(trim[0]) - int(trim[1]) - 1) for trim in reversed(trims)]
+            break
+    else:
+        if use_label:
+            avsp.MsgBox(_("No Trims found with label '{0}'").format(label), _('Error'))
+        elif use_line:
+            avsp.MsgBox(_('No Trims found in the specified line: {0}')
+                        .format(line_number), _('Error'))
+        else:
+            avsp.MsgBox(_('No Trims found in the specified Avisynth script'), _('Error'))
+        return
+    return trims
+
+# Prompt for fps list and output timecode path
+ask = ask_next = avsp.Options.get('ask', False)
 if save_avs and not avsp.IsScriptSaved():
     avsp.SaveScript()
 avs = avsp.GetScriptFilename()
-if not avs:
-    return
-
-# Parse Trims
-if use_label and prompt_for_label:
-    label = avsp.GetTextEntry(title=_('Specify the label'), 
-                        message=_('Introduce the label used in the Trims line'), 
-                        default=label, width=250)  
-    if not label:
-        return
-re_line = re.compile(r'^[^#]*\bTrim\s*\(\s*(\d+)\s*,\s*(-?\d+)\s*\).*{0}'
-                     .format('#.*' + label if use_label else ''), re.I)
-re_trim = re.compile(r'^[^#]*\bTrim\s*\(\s*(\d+)\s*,\s*(-?\d+)\s*\)', re.I)
-for line in (avsp.GetText().splitlines() if parse_avs_top2bottom else 
-                                        reversed(avsp.GetText().splitlines())):
-    if re_line.search(line):
-        trims = []
-        end = len(line)
-        while(1):
-            res = re_trim.search(line[:end])
-            if res is None:
-                break
-            else:
-                trims.append(res.groups())
-                end = res.start(1)
-        trims = [(int(trim[0]), int(trim[1]) if int(trim[1]) > 0 else 
-                   int(trim[0]) - int(trim[1]) - 1) for trim in reversed(trims)]
-        break
-else:
-    if use_label:
-        avsp.MsgBox(_('No Trims found with label "{0}"').format(label), _('Error'))
-    else:
-        avsp.MsgBox(_('No Trims found in the specified Avisynth script'), _('Error'))
-    return
-
-# Prompt for frame rate values
-default = 'ntsc_film'
-for i in range(len(trims) - 1):
-    default += ';ntsc_film' if i%2 else ';ntsc_video'
-otc = splitext(avs)[0] + '.tc.txt'
+otc = splitext(avs)[0] + '.tc.txt' if avs else ''
 timecode_filter = (_('Text files') + ' (*.txt)|*.txt|' + _('All files') + '|*.*')
-options = avsp.GetTextEntry(
-    title=_('Create a timecode file from the {0} line with uncommented Trims')
-          .format(_('first') if parse_avs_top2bottom else _('last')),
-    message=[_('Set a FPS for each Trim. Alias:\n'
-               'itc: input timecode file, ntsc_film: {0}, ntsc_video: {1}')
-             .format(fps_alias['ntsc_film'], fps_alias['ntsc_video']), 
-             _('Set a FPS to apply to the range of the video outside of the '
-               'Trims.\nLeave blank to only include the range within Trims in '
-               'the timecode.'), 
-             _('Output timecode path')],
-    default=[default, default_fps if use_default_fps else '', 
-             (otc, timecode_filter)], 
-    types=['', '', 'file_save'], 
-    width=300)
-if not options:
-    return
+while True:
+    if ask_next:
+        options = ask_trim_options()
+        if options:
+            trims = parse_trims(*options)
+            if not trims: continue
+            ask_next = False
+        else:
+            return   
+    else:
+        trims = parse_trims()
+    if not trims:
+        return
+    
+    default = 'ntsc_film'
+    for i in range(len(trims) - 1):
+        default += ';ntsc_film' if i%2 else ';ntsc_video'
+    options = avsp.GetTextEntry(
+        title=_('Create/join timecodes from Trims'),
+        message=[_('Set a FPS for each Trim. Alias:\n'
+                   'itc: input timecode file, ntsc_film: {0}, ntsc_video: {1}')
+                 .format(fps_alias['ntsc_film'], fps_alias['ntsc_video']), 
+                 _('Set a FPS to apply to the range of the video outside of the '
+                   'Trims.\nLeave blank to only include the range within Trims in '
+                   'the timecode.'), 
+                 _('Output timecode path'), 
+                 [_('Ask for Trims line selection options'), _('Ask always')]],
+        default=[default, default_fps if use_default_fps else '', 
+                 (otc, timecode_filter), [ask_next, ask]], 
+        types=['', '', 'file_save', ['check', 'check']], 
+        width=400)
+    if not options:
+        return
+    fps_list, default_fps, otc, ask_next, ask = options
+    if default_fps: use_default_fps = True
+    if not ask_next: break
+avsp.Options['ask'] = ask
 
 # Convert FPS values to float
 fps_str_list = options[0].split(';')

@@ -111,7 +111,7 @@ if avs:
 else:
     tc_in = tc_out = ''
 while True: 
-    reversed_ = avsp.Options.get('reversed', False)
+    reversed_ = avsp.Options.get('reversed_', False)
     use_label = avsp.Options.get('use_label', False)
     label = avsp.Options.get('label', 'tc')
     use_line = avsp.Options.get('use_line', False)
@@ -144,7 +144,7 @@ if use_line:
     use_label = False
     lines = lines[line_number - 1:line_number]
 re_line = re.compile(r'^[^#]*\bTrim\s*\(\s*(\d+)\s*,\s*(-?\d+)\s*\).*{0}'
-                     .format('#.*' + label if use_label else ''), re.I)
+                     .format('#\s*' + label if use_label else ''), re.I)
 re_trim = re.compile(r'^[^#]*\bTrim\s*\(\s*(\d+)\s*,\s*(-?\d+)\s*\)', re.I)
 for line in reversed(lines) if reversed_ else lines:
     if re_line.search(line):
@@ -160,14 +160,14 @@ for line in reversed(lines) if reversed_ else lines:
         break
 else:
     if use_label:
-        avsp.MsgBox("No Trims found with label '{0}'".format(label), _('Error'))
+        avsp.MsgBox(_("No Trims found with label '{0}'").format(label), _('Error'))
         return
     elif use_line:
-        avsp.MsgBox('No Trims found in the specified line: {0}'
+        avsp.MsgBox(_('No Trims found in the specified line: {0}')
                     .format(line_number), _('Error'))
         return
     else:
-        avsp.MsgBox('No Trims found in the specified Avisynth script', _('Error'))
+        avsp.MsgBox(_('No Trims found in the specified Avisynth script'), _('Error'))
         return
 trims = [(int(trim[0]), int(trim[1]) if int(trim[1]) > 0 else int(trim[0]) - 
           int(trim[1]) - 1) for trim in reversed(trims)]
@@ -195,7 +195,7 @@ with open(tc_in) as itc:
         lines = timecode_v1_to_v2(itc.readlines(), 
                                   end=trims[-1][1])
     else:
-        avsp.MsgBox('Invalid timecode file', _('Error'))
+        avsp.MsgBox(_('Invalid timecode file'), _('Error'))
         return
     
 # Offset timestamps and save new timecode
