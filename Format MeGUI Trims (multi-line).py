@@ -68,7 +68,7 @@ avs.Clear()
 trim_text = 'v = last\n'
 clip = ''
 for i, trim in enumerate(trims):
-    trim_text += 'v.Trim({0},{1}){2}\np{4} = last\n'.format(trim[0], trim[1], 
+    trim_text += 'v.Trim({0},{1}){2}\np{3} = last\n'.format(trim[0], trim[1], 
                                                             trim[2], i + 1)
     clip += 'p{0} ++ '.format(i + 1)
 avsp.InsertText(trim_text + clip[:-4], pos=None)
