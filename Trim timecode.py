@@ -110,33 +110,34 @@ if avs:
         tc_in = tc_out = ''
 else:
     tc_in = tc_out = ''
+reversed_ = avsp.Options.get('reversed_', False)
+use_label = avsp.Options.get('use_label', False)
+label = avsp.Options.get('label', 'tc')
+use_line = avsp.Options.get('use_line', False)
+line_number = avsp.Options.get('line_number', 1)
+lines = avsp.GetText().splitlines()
+filter = (_('Text files') + ' (*.txt)|*.txt|' + _('All files') + '|*.*')
 while True: 
-    reversed_ = avsp.Options.get('reversed_', False)
-    use_label = avsp.Options.get('use_label', False)
-    label = avsp.Options.get('label', 'tc')
-    use_line = avsp.Options.get('use_line', False)
-    line_number = avsp.Options.get('line_number', 1)
-    lines = avsp.GetText().splitlines()
     options = avsp.GetTextEntry(title=_('Trim timecode'), 
             message=[_('Input timecode'), _('Output timecode'), 
-                     _('Parse script from bottom to top instead of top to bottom '
-                       'for a line with Trims'),
+                     _('Parse script for a line with Trims from bottom to top '
+                       'instead of top to bottom'),
                      [_('Use the Trims line with #label'), _('Label')],
                      [_('Specify directly a line'), _('Line number')]], 
-            default=[tc_in, tc_out, reversed_, 
+            default=[(tc_in, filter), (tc_out, filter), reversed_, 
                      [use_label, label],
                      [use_line, (line_number, 1, len(lines))]], 
             types=['file_open', 'file_save', 'check', 'check', ['check', 'spin']])
     if not options: return
     tc_in, tc_out, reversed_, use_label, label, use_line, line_number = options
-    avsp.Options['reversed_'] = reversed_
-    avsp.Options['use_label'] = use_label
-    avsp.Options['label'] = label
-    avsp.Options['use_line'] = use_line
-    avsp.Options['line_number'] = line_number
     if not tc_in or not tc_out:
         avsp.MsgBox(_('Input and output timecode paths are needed'), _('Error'))
     else:
+        avsp.Options['reversed_'] = reversed_
+        avsp.Options['use_label'] = use_label
+        avsp.Options['label'] = label
+        avsp.Options['use_line'] = use_line
+        avsp.Options['line_number'] = line_number
         break
 
 # Read Trims from script
