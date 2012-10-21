@@ -13,7 +13,7 @@ There's various dividing choices:
 
 If 'split at the current cursor position' is set, the script is only 
 evaluated until the line the cursor is on, and the Trims are inserted 
-in the next line.
+before the next one.
 
 
 Latest version:  https://github.com/vdcrim/avsp-macros
@@ -49,6 +49,7 @@ with this program.  If not, see <http://www.gnu.org/licenses/gpl-2.0.html>.
 
 # run in thread
 
+import sys
 import os
 import os.path
 import re
@@ -107,6 +108,9 @@ if use_dir:
     dirname = avsp.Options.get('dirname', '')
 if use_base:
     basename = avsp.Options.get('basename', '')
+basename2, ext = os.path.splitext(basename)
+if ext in ('.avs', '.avsi'):
+    basename = basename2
 filename = os.path.join(dirname, basename)
 
 # Ask for options
@@ -118,17 +122,18 @@ while True:
         message=[_('Split script by...'), [_('Frame step'), _('Time step'), _('Number of intervals')], 
                  _('Split at the current cursor position'), _('Choose a directory and basename'),
                  [_('Use always this directory'), _('Use always this basename')]], 
-        default=[election_list, [(frame_step, 1, None, 0, 1000), time_step, (intervals, 1)], 
-                 use_current_position, filename, [use_dir, use_base]], 
+        default=[election_list, [(frame_step, 1, None, 0, max(1, 10 ** (len(str(frame_step)) - 2))), 
+                 time_step, (intervals, 1)], use_current_position, filename, [use_dir, use_base]], 
         types=['list_read_only', ['spin', '', 'spin'], 'check', 'file_save', ['check', 'check']], 
         width=300)
     if not options:
         return
     election, frame_step, time_step, intervals, use_current_position, filename, use_dir, use_base = options          
-    time_step_ms = parse_time(time_step)
-    if not time_step_ms:
-        avsp.MsgBox(_('Malformed time: '+ time_step), _('Error'))
-        continue
+    if election == _('specifying a time step'):
+        time_step_ms = parse_time(time_step)
+        if not time_step_ms:
+            avsp.MsgBox(_('Malformed time: '+ time_step), _('Error'))
+            continue
     if filename:
         filename = filename.lstrip()
         break
@@ -149,13 +154,20 @@ if use_base:
     avsp.Options['basename'] = os.path.basename(filename)
 
 # Eval script
-text = avsp.GetText().encode('utf-8') # StyledTextCtrl uses utf-8 internally
+encoding = sys.getfilesystemencoding()
+text = avsp.GetText()
 if use_current_position:
+    text = text.encode('utf-8') # StyledTextCtrl uses utf-8 internally
     script = self.currentScript
     index = script.GetLineEndPosition(script.GetCurrentLine())
+    text_enc = text[:index], text[index:]
+    text = text_enc[0].decode('utf-8')
+    if encoding != 'utf8': # AviSynth expects mbcs
+        text_enc = (text.encode(encoding).rstrip(), 
+                    text_enc[1].decode('utf-8').encode(encoding))
 else:
-    index = len(text)
-clip = pyavs.AvsClip(text[:index].decode('utf-8')) # AviSynth expects mbcs
+    text_enc = text.encode(encoding).rstrip(), ''
+clip = pyavs.AvsClip(text)
 if not clip.initialized or clip.IsErrorClip():
     avsp.MsgBox(_('Error loading the script'), _('Error'))
     return
@@ -194,6 +206,7 @@ for i, frame in enumerate(frame_list[:-1]):
     avs_path = u'{0}_{1:0{2}}.avs'.format(filename, i+1, digits)
     avs_list.append(avs_path)
     with open(avs_path, 'w') as f:
-        f.write(text[:index] + '\nTrim({0},{1})'.format(frame, frame_list[i+1] - 1) + 
-                text[index:])
+        f.write(text_enc[0] + 
+                '\nTrim({0},{1})'.format(frame, frame_list[i+1] - 1).encode(encoding) + 
+                text_enc[1])
 return avs_list
