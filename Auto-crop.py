@@ -33,9 +33,9 @@ with this program.  If not, see <http://www.gnu.org/licenses/gpl-2.0.html>.
 show_prompt = True
 
 # Values used with show_prompt = False
-samples = 10  # number of frames analyzed. Start and end of the video are skipped to avoid issues with credits
+samples = 10  # number of frames analyzed. Start and end of the video are skipped to avoid credits
 tol = 70  # tolerance (0-255)
-overcrop = True # round up or down crop values because of chroma subsampling
+overcrop = True # Up or down crop values because of chroma subsampling
 insert = True  #  insert Crop() at the end of the script
 refresh = True  # update and show if hidden the video preview
 
@@ -77,7 +77,9 @@ def autocrop(samples=10, tol=70, overcrop=True, insert=True, refresh=True,
     # Get crop values for a number of frames
     frames = avsp.GetVideoFramecount()
     avs = avsp.GetWindow().currentScript
-    left_values, top_values, right_values, bottom_values = [], [], [], []
+    if not frames or avs.AVI.IsErrorClip():
+        avsp.MsgBox(_('Error loading the script'), _('Error'))
+        return
     def float_range(start=0, end=10, step=1):
         while start < end:
             yield int(round(start))
@@ -94,15 +96,9 @@ def autocrop(samples=10, tol=70, overcrop=True, insert=True, refresh=True,
 
     # Get final crop values
     final_crop_values = []
-    yv12 = avs.AVI.vi.IsYV12()
-    yuy2 = avs.AVI.vi.IsYUY2()
     for seq in zip(*crop_values):
         value = get_crop_value(seq)
-        if value % 2 and (yv12 or yuy2 and not len(final_crop_values) % 2):
-            if overcrop:
-                value += 1
-            else:
-                value -= 1
+        value = check_subsampling(value, avs.AVI.Colorspace, not len(final_crop_values) % 2, overcrop)
         final_crop_values.append(value)
     if insert:
         txt = '' if avsp.GetText().endswith('\n') else '\n'
@@ -113,36 +109,42 @@ def autocrop(samples=10, tol=70, overcrop=True, insert=True, refresh=True,
 
 def autocrop_frame(frame, tol=70):
     """Return crop values for a specific frame"""
-    width, height = avsp.GetVideoWidth(), avsp.GetVideoHeight()
-    avs = avsp.GetWindow().currentScript
-    bmp = wx.EmptyBitmap(width, height)
-    mdc = wx.MemoryDC()
-    mdc.SelectObject(bmp)
-    dc = mdc if avsp.GetWindow().version > '2.3.1' else mdc.GetHDC()
-    avs.AVI.DrawFrame(frame, dc)
-    img = bmp.ConvertToImage()
-    top_left = img.GetRed(0, 0), img.GetGreen(0, 0), img.GetBlue(0, 0)
-    bottom_right = (img.GetRed(width-1, height-1), img.GetGreen(width-1, height-1), 
-                    img.GetBlue(width-1, height-1))
-    top = bottom = left = right = 0
+    avs_clip = avsp.GetWindow().currentScript.AVI
+    width, height = avs_clip.vi.width, avs_clip.vi.height
+    if avs_clip.clipRaw is not None: # Get pixel color from the original clip
+        avs_clip._GetFrame(frame)
+        get_pixel_color = avs_clip.GetPixelRGB if avs_clip.IsRGB else avs_clip.GetPixelYUV
+    else: # Get pixel color from the video preview (slower)
+        bmp = wx.EmptyBitmap(width, height)
+        mdc = wx.MemoryDC()
+        mdc.SelectObject(bmp)
+        dc = mdc if avsp.GetWindow().version > '2.3.1' else mdc.GetHDC()
+        avs_clip.DrawFrame(frame, dc)
+        img = bmp.ConvertToImage()
+        get_pixel_color = lambda x, y : (img.GetRed(x, y), img.GetGreen(x, y), img.GetBlue(x, y))
     w, h = width - 1, height - 1
+    top_left0, top_left1, top_left2 = get_pixel_color(0, 0)
+    bottom_right0, bottom_right1, bottom_right2 = get_pixel_color(w, h)
+    top = bottom = left = right = 0
     
     # top & bottom
     top_done = bottom_done = False
     for i in range(height):
         for j in range(width):
-            if (not top_done and (
-                    abs(img.GetRed(j, i) - top_left[0]) > tol or 
-                    abs(img.GetGreen(j, i) - top_left[1]) > tol or 
-                    abs(img.GetBlue(j, i) - top_left[2]) > tol)):
-                top = i
-                top_done = True
-            if (not bottom_done and (
-                    abs(img.GetRed(j, h - i) - bottom_right[0]) > tol or 
-                    abs(img.GetGreen(j, h - i) - bottom_right[1]) > tol or 
-                    abs(img.GetBlue(j, h - i) - bottom_right[2]) > tol)):
-                bottom = i
-                bottom_done = True
+            if not top_done:
+                color0, color1, color2 = get_pixel_color(j, i)
+                if (abs(color0 - top_left0) > tol or 
+                    abs(color1 - top_left1) > tol or 
+                    abs(color2 - top_left2) > tol):
+                        top = i
+                        top_done = True
+            if not bottom_done:
+                color0, color1, color2 = get_pixel_color(j, h - i)
+                if (abs(color0 - bottom_right0) > tol or 
+                    abs(color1 - bottom_right1) > tol or 
+                    abs(color2 - bottom_right2) > tol):
+                        bottom = i
+                        bottom_done = True
             if top_done and bottom_done: break
         else: continue
         break
@@ -151,18 +153,20 @@ def autocrop_frame(frame, tol=70):
     left_done = right_done = False
     for j in range(width):
         for i in range(height):
-            if (not left_done and (
-                    abs(img.GetRed(j, i) - top_left[0]) > tol or 
-                    abs(img.GetGreen(j, i) - top_left[1]) > tol or 
-                    abs(img.GetBlue(j, i) - top_left[2]) > tol)):
-                left = j
-                left_done = True
-            if (not right_done and (
-                    abs(img.GetRed(w - j, i) - bottom_right[0]) > tol or 
-                    abs(img.GetGreen(w - j, i) - bottom_right[1]) > tol or 
-                    abs(img.GetBlue(w - j, i) - bottom_right[2]) > tol)):
-                right = j
-                right_done = True
+            if not left_done:
+                color0, color1, color2 = get_pixel_color(j, i)
+                if (abs(color0 - top_left0) > tol or 
+                    abs(color1 - top_left1) > tol or 
+                    abs(color2 - top_left2) > tol):
+                        left = j
+                        left_done = True
+            if not right_done:
+                color0, color1, color2 = get_pixel_color(w - j, i)
+                if (abs(color0 - bottom_right0) > tol or 
+                    abs(color1 - bottom_right1) > tol or 
+                    abs(color2 - bottom_right2) > tol):
+                        right = j
+                        right_done = True
             if left_done and right_done: break
         else: continue
         break
@@ -184,5 +188,25 @@ def get_crop_value(seq):
             if value < ret_val:
                 ret_val = value
         return ret_val
+
+def check_subsampling(value, colorspace, horizontal, overcrop):
+            '''Up or down crop values because of chroma subsampling'''
+            colorspace = colorspace.lower()
+            if colorspace in ('yuy2', 'yv16'):
+                if value % 2 and horizontal:
+                    if overcrop:
+                        value += 1
+                    else:
+                        value -= 1
+            elif colorspace == 'yv411':
+                q, r = divmod(value, 4)
+                if r and horizontal:
+                    value = q * 4 + 4 if overcrop else q * 4
+            elif colorspace == 'yv12' and value % 2:
+                if overcrop:
+                    value += 1
+                else:
+                    value -= 1
+            return value
 
 return autocrop(samples, tol, overcrop, insert, refresh, show_prompt)
