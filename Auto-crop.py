@@ -80,11 +80,16 @@ def autocrop(samples=10, tol=70, overcrop=True, insert=True, refresh=True,
     if not frames or avs.AVI.IsErrorClip():
         avsp.MsgBox(_('Error loading the script'), _('Error'))
         return
-    def float_range(start=0, end=10, step=1):
-        while start < end:
-            yield int(round(start))
-            start += step
-    frames = float_range(frames/10, 9*frames/10 - 1, 8.0*frames/(10*samples))
+    samples = min(samples, frames)
+    if samples <= 2:
+        frames = range(samples)
+    else:
+        def float_range(start=0, end=10, step=1):
+            '''Range with float step'''
+            while start < end:
+                yield int(round(start))
+                start += step
+        frames = float_range(frames/10, 9*frames/10 - 1, 8.0*frames/(10*samples))
     progress = avsp.ProgressBox(samples, _('Analyzing frames...'), _('Auto-crop'))
     crop_values = []
     for i, frame in enumerate(frames):
