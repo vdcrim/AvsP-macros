@@ -13,7 +13,10 @@ There's various dividing choices:
 
 If 'split at the current cursor position' is set, the script is only 
 evaluated until the line the cursor is on, and the Trims are inserted 
-before the next one.
+before the next one.  If this option and 'using the last evaluated 
+expression' are checked, the clip that is used as the script's return 
+is the one returned on the last evaluated expression, even if it's 
+assigned to a variable (doesn't set 'last').
 
 
 Latest version:  https://github.com/vdcrim/avsp-macros
@@ -21,9 +24,11 @@ Created for http://forum.doom9.org/showthread.php?p=1568663#post1568663
 
 Changelog:
   v1: initial release
-  v2: add splitting options (bookmarks are not longer necessary)
+  v2: move all settings to the prompt
+      add splitting options (bookmarks are not longer necessary)
       add 'split at current position' option
-      move all settings to the prompt
+      add 'using the last evaluated expression' option
+      fix text evaluated when the cursor is on a multiline comment
 
 
 Copyright (C) 2012  Diego Fernández Gosende <dfgosende@gmail.com>
@@ -92,6 +97,7 @@ frame_step = avsp.Options.get('frame_step', 10000)
 time_step = avsp.Options.get('time_step', '0:01:00.000')
 intervals = avsp.Options.get('intervals', 10)
 use_current_position = avsp.Options.get('use_current_position', False)
+use_last_expression = avsp.Options.get('use_last_expression', True)
 use_dir = avsp.Options.get('use_dir', False)
 use_base = avsp.Options.get('use_base', False)
 
@@ -119,16 +125,24 @@ while True:
                      _('specifying a time step'), _('specifying a number of intervals'), 
                      election)
     options = avsp.GetTextEntry(title=_('Divide script'), 
-        message=[_('Split script by...'), [_('Frame step'), _('Time step'), _('Number of intervals')], 
-                 _('Split at the current cursor position'), _('Choose a directory and basename'),
+        message=[_('Split script by...'), 
+                 [_('Frame step'), _('Time step'), _('Number of intervals')], 
+                 [_('Split at the current cursor position'), 
+                  _('... using the last evaluated expression')],
+                 _('Choose a directory and basename'),
                  [_('Use always this directory'), _('Use always this basename')]], 
-        default=[election_list, [(frame_step, 1, None, 0, max(1, 10 ** (len(str(frame_step)) - 2))), 
-                 time_step, (intervals, 1)], use_current_position, filename, [use_dir, use_base]], 
-        types=['list_read_only', ['spin', '', 'spin'], 'check', 'file_save', ['check', 'check']], 
-        width=300)
+        default=[election_list, 
+                 [(frame_step, 1, None, 0, max(1, 10 ** (len(str(frame_step)) - 2))), 
+                  time_step, (intervals, 1)], 
+                 [use_current_position, use_last_expression], 
+                 filename, [use_dir, use_base]], 
+        types=['list_read_only', ['spin', '', 'spin'], ['check', 'check'], 
+               'file_save', ['check', 'check']], 
+        width=400)
     if not options:
         return
-    election, frame_step, time_step, intervals, use_current_position, filename, use_dir, use_base = options          
+    (election, frame_step, time_step, intervals, use_current_position, 
+     use_last_expression, filename, use_dir, use_base) = options          
     if election == _('specifying a time step'):
         time_step_ms = parse_time(time_step)
         if not time_step_ms:
@@ -146,6 +160,7 @@ avsp.Options['frame_step'] = frame_step
 avsp.Options['time_step'] = time_step
 avsp.Options['intervals'] = intervals
 avsp.Options['use_current_position'] = use_current_position
+avsp.Options['use_last_expression'] = use_last_expression
 avsp.Options['use_dir'] = use_dir
 avsp.Options['use_base'] = use_base
 if use_dir:
@@ -156,9 +171,22 @@ if use_base:
 # Eval script
 encoding = sys.getfilesystemencoding()
 text = avsp.GetText()
+var = 'last'
 if use_current_position:
     text = text.encode('utf-8') # StyledTextCtrl uses utf-8 internally
     script = self.currentScript
+    re_assign = re.compile(r'\s*(\w+)\s*=')
+    for line in range(script.GetCurrentLine(), -1 , -1):
+        line_text = script.GetLine(line).strip()
+        line_pos = script.PositionFromLine(line)
+        if (line_text and script.GetStyleAt(line_pos) not in script.commentStyle):
+            if use_last_expression:
+                match = re_assign.match(line_text)
+                if match:
+                    var = match.group(1)
+            script.SetCurrentPos(line_pos)
+            script.SetAnchor(line_pos)
+            break
     index = script.GetLineEndPosition(script.GetCurrentLine())
     text_enc = text[:index], text[index:]
     text = text_enc[0].decode('utf-8')
@@ -167,7 +195,7 @@ if use_current_position:
                     text_enc[1].decode('utf-8').encode(encoding))
 else:
     text_enc = text.encode(encoding).rstrip(), ''
-clip = pyavs.AvsClip(text)
+clip = pyavs.AvsClip(u'{0}\nreturn {1}'.format(text, var))
 if not clip.initialized or clip.IsErrorClip():
     avsp.MsgBox(_('Error loading the script'), _('Error'))
     return
