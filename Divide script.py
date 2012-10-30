@@ -172,6 +172,7 @@ if use_base:
 encoding = sys.getfilesystemencoding()
 text = avsp.GetText()
 var = 'last'
+assign = ''
 if use_current_position:
     text = text.encode('utf-8') # StyledTextCtrl uses utf-8 internally
     script = self.currentScript
@@ -184,6 +185,7 @@ if use_current_position:
                 match = re_assign.match(line_text)
                 if match:
                     var = match.group(1)
+                    assign = '{0}={0}.'.format(var)
             script.SetCurrentPos(line_pos)
             script.SetAnchor(line_pos)
             break
@@ -235,6 +237,6 @@ for i, frame in enumerate(frame_list[:-1]):
     avs_list.append(avs_path)
     with open(avs_path, 'w') as f:
         f.write(text_enc[0] + 
-                '\nTrim({0},{1})'.format(frame, frame_list[i+1] - 1).encode(encoding) + 
+                '\n{0}Trim({1},{2})'.format(assign, frame, frame_list[i+1] - 1).encode(encoding) + 
                 text_enc[1])
 return avs_list
