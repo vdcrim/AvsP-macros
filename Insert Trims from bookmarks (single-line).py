@@ -5,14 +5,15 @@ Insert a line of Trims, based on the video frame bookmarks, at the
 current cursor position of the Avisynth script in the current tab.
 
 
+Date: 2012-09-11
 Latest version:     https://github.com/vdcrim/avsp-macros
 Doom9 Forum thread: http://forum.doom9.org/showthread.php?t=163653
 
 Changelog:
-  v1: initial release
-  v2: check if there's bookmarks
-      let the user cancel if there's an odd number of bookmarks. Needs 
-        AvsPmod 2.3.0+
+- check if there's bookmarks
+- let the user cancel if there's an odd number of bookmarks
+- fix Python 2.6 compatibility
+
 
 Copyright (C) 2011  Diego Fernández Gosende <dfgosende@gmail.com>
 

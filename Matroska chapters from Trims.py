@@ -77,13 +77,13 @@ also neeed PySubs.  Do one of the following:
   if you want.
 
 
+Date: 2012-06-08
 Latest version:     https://github.com/vdcrim/avsp-macros
 Doom9 Forum thread: http://forum.doom9.org/showthread.php?t=163653
 
 Changelog:
-  v1: initial release
-  v2: added custom parsing order and label feature. Needs vfr.py 0.8.6.1+
-  v3: updated prompt dialog. Needs AvsPmod 2.3.0+
+- add custom parsing order and label feature. Needs vfr.py 0.8.6.1+
+- update prompt dialog
 
 
 Copyright (C) 2011, 2012  Diego Fernández Gosende <dfgosende@gmail.com>

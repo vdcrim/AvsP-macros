@@ -19,13 +19,15 @@ the Avisynth script (see 'preferences' section). A path is asked if it
 can't be found.
 
 
+Date: 2012-09-11
 Latest version:     https://github.com/vdcrim/avsp-macros
 Doom9 Forum thread: http://forum.doom9.org/showthread.php?t=163653
 
 Changelog:
-  v1: initial release
-  v2: updated prompt dialog. Needs AvsPmod 2.3.0+
-  
+- update prompt dialog
+- fix decimal mark in the ask fps dialog
+- fix Python 2.6 compatibility 
+
 
 Copyright (C) 2012  Diego Fernández Gosende <dfgosende@gmail.com>
 

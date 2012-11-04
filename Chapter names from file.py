@@ -8,13 +8,15 @@ directory are processed.
 Intended for use with vfr.py (http://forum.doom9.org/showthread.php?t=154535)
 
 
+Date: 2012-09-11
 Latest version:     https://github.com/vdcrim/avsp-macros
 Doom9 Forum thread: http://forum.doom9.org/showthread.php?t=163653
 
 Changelog:
-  v1: initial release
-  v2: updated prompt dialog. Needs AvsPmod 2.3.0+
-  v3: fixes
+- update prompt dialog
+- fix macro doesn't working - a 'return' was left from testing
+- other fixes
+- fix Python 2.6 compatibility
 
 
 Copyright (C) 2012  Diego Fernández Gosende <dfgosende@gmail.com>

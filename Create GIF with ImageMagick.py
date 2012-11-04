@@ -32,12 +32,13 @@ If you only need ImageMagick for this macro then do the following:
 Just install ImageMagick on your system.
 
 
+Date: 2012-09-11
 Latest version:  https://github.com/vdcrim/avsp-macros
 
 Changelog:
-  v1: initial release
-  v2: fix handle inheritance issue
-  v3: AvxSynth compatibility
+- fix handle inheritance issue
+- AvxSynth compatibility
+- fix Python 2.6 compatibility
 
 
 Copyright (C) 2012  Diego Fernández Gosende <dfgosende@gmail.com>

@@ -16,11 +16,13 @@ There are three ways of specifying the line of the avs used:
 - Directly specifying the Trims line number, starting with 1.
 
 
+Date: 2012-10-03
 Latest version:     https://github.com/vdcrim/avsp-macros
 Doom9 Forum thread: http://forum.doom9.org/showthread.php?t=163653
 
 Changelog:
-  v1: initial release
+- small correction to the regular expression used to parse trims
+- add file filter to the open/save file dialogs
 
 
 Copyright (C) 2012  Diego Fernández Gosende <dfgosende@gmail.com>

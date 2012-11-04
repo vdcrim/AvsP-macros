@@ -19,16 +19,18 @@ is the one returned on the last evaluated expression, even if it's
 assigned to a variable (doesn't set 'last').
 
 
+Date: 2012-10-30
 Latest version:  https://github.com/vdcrim/avsp-macros
-Created for http://forum.doom9.org/showthread.php?p=1568663#post1568663
 
 Changelog:
-  v1: initial release
-  v2: move all settings to the prompt
-      add splitting options (bookmarks are not longer necessary)
-      add 'split at current position' option
-      add 'using the last evaluated expression' option
-      fix text evaluated when the cursor is on a multiline comment
+- fix Python 2.6 compatibility
+- move all settings to the prompt
+- add splitting options (bookmarks are not longer necessary)
+- add 'split at current position' option
+- fix file encodings and some cosmetics
+- add 'using the last evaluated expression' option
+- fix text evaluated when the cursor is on a multiline comment
+- fix generated scripts not being correct in some cases
 
 
 Copyright (C) 2012  Diego Fernández Gosende <dfgosende@gmail.com>

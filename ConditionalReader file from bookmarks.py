@@ -17,18 +17,22 @@ More info on ConditionalReader:
 http://avisynth.org/mediawiki/ConditionalReader
 
 
+Date: 2012-09-11
 Latest version:
-    https://github.com/vdcrim/avsp-macros
+  https://github.com/vdcrim/avsp-macros
 Original macro idea from Bernardd:
-    http://forum.doom9.org/showpost.php?p=1562538&postcount=738
+  http://forum.doom9.org/showpost.php?p=1562538&postcount=738
 
 Changelog:
-  v1: initial release
-  v2: fix
-  v3: changed some defaults, improved the macro description
-  v4: accept introducing the two values needed for interpolation separately 
-      check if there are bookmarks before showing the prompt
-      other minor fixes
+- fix
+- change some defaults, improve the macro description
+- accept introducing the two values needed for interpolation separately 
+- check if there are bookmarks before showing the prompt
+- minor fixes
+- warn if an output path has not been introduced instead of just exiting
+- save introduced values for showing the dialog again if interpolation is
+  selected but not Int or Float, and for the case above
+- fix Python 2.6 compatibility
 
 
 Copyright (C) 2012  Diego Fernández Gosende <dfgosende@gmail.com>

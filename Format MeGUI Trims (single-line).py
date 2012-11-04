@@ -5,11 +5,12 @@ Reformat MeGUI generated Trims to a single line in the Avisynth script
 in the current tab.
 
 
+Date: 2012-09-11
 Latest version:     https://github.com/vdcrim/avsp-macros
 Doom9 Forum thread: http://forum.doom9.org/showthread.php?t=163653
 
 Changelog:
-  v1: initial release
+- fix Python 2.6 compatibility
 
 
 Copyright (C) 2012  Diego Fernández Gosende <dfgosende@gmail.com>

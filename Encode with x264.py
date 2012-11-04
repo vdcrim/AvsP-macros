@@ -55,28 +55,29 @@ parameters" if they don't have a specific field.
 See the "PREFERENCES" section below to check and customize the other features.
 
 
+Date: 2012-09-11
 Latest version:     https://github.com/vdcrim/avsp-macros
 Doom9 Forum thread: http://forum.doom9.org/showthread.php?t=163440
 
 Changelog:
-  v1: initial release
-  v2: minor changes and some cleanup
-  v3: fix "Additional parameters" field. It needed to start with a space
-  v4: improved interface with recent updates in AvsPmod. It needs AvsPmod 2.3.0+
-      default values can be set now from the prompt
-      added 2-pass ABR mode
-      added scan type option
-      added DAR to the prompt. It can also be read from the avs now, like 
-          "# DAR 16:9" or "# DAR 1.85"
-      added Blu-ray compatible and open-GOP switches to the prompt
-      x264 parameters can now be read from the avs, like 
-          "# x264 parameters --crf 17 --aq-strength 1.2"
-      zones can now be read from lines with Trims in the avs, like 
-          "Trim(0,100) # zones crf=20"
-      improved RGB / YCbCr flags alias feature
-      added option to archive the encoding log and a copy of the avs
-      added option to run the encoding without a window and notify at the end
-      added option to close the current tab and/or preview tabs on its right
+- minor changes and some cleanup
+- fix "Additional parameters" field. It needed to start with a space
+- improved interface with recent updates in AvsPmod
+- default values can be set now from the prompt
+- add 2-pass ABR mode
+- add scan type option
+- add DAR to the prompt. It can also be read from the avs now, like 
+    "# DAR 16:9" or "# DAR 1.85"
+- add Blu-ray compatible and open-GOP switches to the prompt
+- x264 parameters can now be read from the avs, like 
+    "# x264 parameters --crf 17 --aq-strength 1.2"
+- zones can now be read from lines with Trims in the avs, like 
+    "Trim(0,100) # zones crf=20"
+- improve RGB / YCbCr flags alias feature
+- add option to archive the encoding log and a copy of the avs
+- add option to run the encoding without a window and notify at the end
+- add option to close the current tab and/or preview tabs on its right
+- fix Python 2.6 compatibility
 
 
 Copyright (C) 2011, 2012  Diego Fernández Gosende <dfgosende@gmail.com>

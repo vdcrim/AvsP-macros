@@ -30,15 +30,19 @@ There are three ways of specifying the line of the avs used:
 - Directly specifying the Trims line number, starting with 1.
 
 
+Date: 2012-09-15
 Latest version:     https://github.com/vdcrim/avsp-macros
 Doom9 Forum thread: http://forum.doom9.org/showthread.php?t=163653
 
 Changelog:
-  v1: initial release
-  v2: support for negative second member of the Trim pair
-  v3: updated prompt dialog. Needs AvsPmod 2.3.0+
-      accept spaces between Trim and its parameters
-      accept selecting the Trims line by specifying directly the line number
+- support for negative last frame of Trim
+- update prompt dialog
+- accept spaces between Trim and its parameters
+- fix error when using a single timecode
+- fix Python 2.6 compatibility
+- move 'ask for options' setting to the prompt
+- accept selecting the Trims line by specifying directly the line number
+
 
 
 Copyright (C) 2011, 2012  Diego Fernández Gosende <dfgosende@gmail.com>

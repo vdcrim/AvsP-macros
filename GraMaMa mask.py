@@ -23,10 +23,11 @@ where (a, b) is the center of the mask, selected by clicking on the video
 preview.
 
 
+Date: 2012-09-11
 Latest version:  https://github.com/vdcrim/avsp-macros
 
 Changelog:
-  v1: initial release
+- fix Python 2.6 compatibility
 
 
 Copyright (C) 2012  Diego Fernández Gosende <dfgosende@gmail.com>

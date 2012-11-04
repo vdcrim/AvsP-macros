@@ -6,16 +6,18 @@ files in a specified directory.  Save as an image the current frame of
 the result afterwards.
 
 
+Date: 2012-09-11
 Latest version: https://github.com/vdcrim/avsp-macros
 Created originally for http://forum.doom9.org/showthread.php?p=1552739#post1552739
 
 Changelog:
-  v1: initial release
-  v2: fix previous bad cleanup
-      the script is now taken from the current tab
-      not restrict the input files to only JPEG
-      allow specifying a different output directory
-      move all the settings to the prompt
+- fix previous bad cleanup
+- the script is now taken from the current tab
+- not restrict the input files to only JPEG
+- allow specifying a different output directory
+- move all the settings to the prompt
+- fix Python 2.6 compatibility
+- fix Unicode paths
 
 
 Copyright (C) 2012  Diego Fernández Gosende <dfgosende@gmail.com>

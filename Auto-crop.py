@@ -4,10 +4,17 @@
 Crop borders from the script in the current tab
 
 
+Date: 2012-10-24
 Latest version: https://github.com/vdcrim/avsp-macros
 
 Changelog:
-  v1: initial release
+- fix Python 2.6 compatibility
+- fix number of samples
+- speed up a bit the autocrop detection if the original AviSynth clip is
+  keep on memory (%YUV or %CLR are set to appear on the status bar)
+- check the chroma subsampling also for the new AviSynth 2.6 colorspaces
+  (AvsPmod 2.4.0+)
+- fix clips with less frames than samples
 
 
 Copyright (C) 2012  Diego Fernández Gosende <dfgosende@gmail.com>
