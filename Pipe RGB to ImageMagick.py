@@ -243,7 +243,7 @@ output_path = avs_path = avsp.GetScriptFilename()
 if output_path:
     dirname, basename = os.path.split(output_path)
 elif self.version > '2.3.1':
-    dirname, basename = os.path.split(avsp.GetScriptoutput_path(propose='general'))
+    dirname, basename = os.path.split(avsp.GetScriptFilename(propose='general'))
 else:
     dirname, basename = (self.options['recentdir'], self.scriptNotebook.GetPageText(
                          self.scriptNotebook.GetSelection()).lstrip('* '))
