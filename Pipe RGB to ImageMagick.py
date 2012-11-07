@@ -45,11 +45,11 @@ If you only need ImageMagick for this macro then do the following:
 3) place it on the 'AvsPmod\tools' directory
 
 
-Date: 2012-11-04
+Date: 2012-11-07
 Latest version:  https://github.com/vdcrim/avsp-macros
 
 Changelog:
-- initial release
+- remember the last used output format
 
 
 Copyright (C) 2012  Diego Fernández Gosende <dfgosende@gmail.com>
@@ -198,6 +198,7 @@ intervals = avsp.Options.get('intervals', 10)
 im_args = avsp.Options.get('im_args', '')
 use_dir = avsp.Options.get('use_dir', False)
 use_base = avsp.Options.get('use_base', False)
+last_ext = avsp.Options.get('last_ext', '.png')
 add_frame_number = avsp.Options.get('add_frame_number', True)
 show_progress = avsp.Options.get('show_progress', True)
 
@@ -243,9 +244,9 @@ output_path = avs_path = avsp.GetScriptFilename()
 if output_path:
     dirname, basename = os.path.split(output_path)
 elif self.version > '2.3.1':
-    dirname, basename = os.path.split(avsp.GetScriptFilename(propose='general'))
+    dirname, basename = os.path.split(avsp.GetScriptFilename(propose='image'))
 else:
-    dirname, basename = (self.options['recentdir'], self.scriptNotebook.GetPageText(
+    dirname, basename = (self.options['imagesavedir'], self.scriptNotebook.GetPageText(
                          self.scriptNotebook.GetSelection()).lstrip('* '))
 if use_dir:
     dirname = avsp.Options.get('dirname', '')
@@ -253,9 +254,9 @@ if use_base:
     basename = avsp.Options.get('basename', '')
 basename2, ext = os.path.splitext(basename)
 if ext in ('.avs', '.avsi'):
-    basename = basename2 + '.png'
-elif not ext:
-    basename = basename + '.png'
+    basename = basename2 + last_ext
+else:
+    basename = basename + last_ext
 output_path = os.path.join(dirname, basename)
 
 # Ask for options
@@ -293,6 +294,7 @@ while True:
         return
 
 # Save default options
+output_path, ext = os.path.splitext(output_path)
 avsp.Options['convert_path'] = convert_path
 avsp.Options['election'] = election
 avsp.Options['frame_step'] = frame_step
@@ -305,6 +307,7 @@ if use_dir:
     avsp.Options['dirname'] = os.path.dirname(output_path)
 if use_base:
     avsp.Options['basename'] = os.path.basename(output_path)
+avsp.Options['last_ext'] = ext
 avsp.Options['add_frame_number'] = add_frame_number
 avsp.Options['show_progress'] = show_progress
 
@@ -352,7 +355,6 @@ else:
 #   http://bugs.python.org/issue3905
 #   http://bugs.python.org/issue1124861
 encoding = sys.getfilesystemencoding()
-output_path, ext = os.path.splitext(output_path)
 if add_frame_number:
     digits = len(str(frame_list[-1] - 1))
     suffix = '-%0{0}d'.format(digits)
