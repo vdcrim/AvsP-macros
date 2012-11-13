@@ -19,7 +19,7 @@ is the one returned on the last evaluated expression, even if it's
 assigned to a variable (doesn't set 'last').
 
 
-Date: 2012-10-30
+Date: 2012-11-13
 Latest version:  https://github.com/vdcrim/avsp-macros
 
 Changelog:
@@ -31,6 +31,7 @@ Changelog:
 - add 'using the last evaluated expression' option
 - fix text evaluated when the cursor is on a multiline comment
 - fix generated scripts not being correct in some cases
+- strip tags and sliders from the script
 
 
 Copyright (C) 2012  Diego Fernández Gosende <dfgosende@gmail.com>
@@ -172,7 +173,10 @@ if use_base:
 
 # Eval script
 encoding = sys.getfilesystemencoding()
-text = avsp.GetText()
+if self.version > '2.3.1':
+    text = avsp.GetText(clean=True) 
+else:
+    text = self.getCleanText(avsp.GetText())
 var = 'last'
 assign = ''
 if use_current_position:

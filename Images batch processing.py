@@ -6,7 +6,7 @@ files in a specified directory.  Save as an image the current frame of
 the result afterwards.
 
 
-Date: 2012-09-11
+Date: 2012-11-13
 Latest version: https://github.com/vdcrim/avsp-macros
 Created originally for http://forum.doom9.org/showthread.php?p=1552739#post1552739
 
@@ -18,6 +18,7 @@ Changelog:
 - move all the settings to the prompt
 - fix Python 2.6 compatibility
 - fix Unicode paths
+- strip tags and sliders from the script before evaluating it
 
 
 Copyright (C) 2012  Diego Fernández Gosende <dfgosende@gmail.com>
@@ -45,6 +46,8 @@ with this program.  If not, see <http://www.gnu.org/licenses/gpl-2.0.html>.
 from os.path import splitext, basename, join
 from glob import glob
 
+self = avsp.GetWindow()
+
 # Get defaults
 in_dir = avsp.Options.get('in_dir', '')
 input_list = avsp.Options.get('input_list', 'bmp;png;tif')
@@ -52,7 +55,7 @@ out_dir = avsp.Options.get('out_dir', '')
 out_format = avsp.Options.get('out_format', _('Portable Network Graphics') + ' (*.png)')
 suffix = avsp.Options.get('suffix', '_new')
 quality = avsp.Options.get('quality', 90)
-format_dict = dict([(name[0], ext) for ext, name in avsp.GetWindow().imageFormats.iteritems()])
+format_dict = dict([(name[0], ext) for ext, name in self.imageFormats.iteritems()])
 
 # Prompt for options
 while True:
@@ -100,7 +103,10 @@ if not paths:
     return
 
 # Check if the script contains the path wildcard
-script = avsp.GetText()
+if self.version > '2.3.1':
+    script = avsp.GetText(clean=True)
+else:
+    script = self.getCleanText(avsp.GetText())
 if not '"input_path"' in script:
     avsp.MsgBox(_('Not "input_path" in the script'), _('Error'))
     return

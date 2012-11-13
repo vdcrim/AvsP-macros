@@ -45,11 +45,12 @@ If you only need ImageMagick for this macro then do the following:
 3) place it on the 'AvsPmod\tools' directory
 
 
-Date: 2012-11-07
+Date: 2012-11-13
 Latest version:  https://github.com/vdcrim/avsp-macros
 
 Changelog:
 - remember the last used output format
+- strip tags and sliders from the script before evaluating it
 
 
 Copyright (C) 2012  Diego Fernández Gosende <dfgosende@gmail.com>
@@ -312,7 +313,11 @@ avsp.Options['add_frame_number'] = add_frame_number
 avsp.Options['show_progress'] = show_progress
 
 # Eval script
-clip = Clip(avsp.GetText(), avs_path)   
+if self.version > '2.3.1':
+    text = avsp.GetText(clean=True)
+else:
+    text = self.getCleanText(avsp.GetText())
+clip = Clip(text, avs_path)   
 if clip.error is not None:
     avsp.MsgBox('\n\n'.join((_('Error loading the script'), clip.error)), _('Error'))
     return
