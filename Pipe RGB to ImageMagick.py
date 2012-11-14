@@ -11,6 +11,23 @@ the order AviSynth/AvxSynth uses.  This macro reorders the data as RGB on
 its own.
 
 
+Video range
+
+By default all the frames in the clip are sent.  Bookmarks can be used 
+to delimit specific frame ranges if the corresponding option is checked.  
+The first and last frame of each range must be added as bookmarks.
+
+A warning is shown if the number of bookmarks is uneven.  If the user 
+accepts then the last range goes till the end of the clip.  If the 'only 
+bookmarks' option is checked but there's none all the video range is 
+piped.
+
+If the 'save every range to a subdirectory' is checked then the bookmark 
+title of the starting frame of each range is used as the directory name, 
+a generic name if it's not set.  The titles can be introduced in the Video 
+menu -> Titled bookmarks -> Set title (manual).
+
+
 Splitting   
 
 Process all the image data in one go can be very memory/filesystem space
@@ -20,7 +37,6 @@ dividing choices:
 - Specify a frame step
 - Specify a time step
 - Specify a number of intervals
-- Use the current AvsP bookmarks as splitting points
 
 To create a single file for each batch (e.g. single TIFF output) be sure 
 to uncheck the 'Add the padded frame number as suffix' option.  To create 
@@ -45,12 +61,16 @@ If you only need ImageMagick for this macro then do the following:
 3) place it on the 'AvsPmod\tools' directory
 
 
-Date: 2012-11-13
+Date: 2012-11-14
 Latest version:  https://github.com/vdcrim/avsp-macros
 
 Changelog:
 - remember the last used output format
 - strip tags and sliders from the script before evaluating it
+- add 'include only the range between bookmarks' option
+- add 'when using bookmarks save every range to a subdirectory' option
+- bookmarks can not longer be used as splitting points
+- improve error reporting
 
 
 Copyright (C) 2012  Diego Fernández Gosende <dfgosende@gmail.com>
@@ -111,7 +131,7 @@ def float_range_list(start, stop, step):
     while start < stop:
         ret.append(int(round(start)))
         start += step
-    ret.append(stop)
+    if ret[-1] != stop: ret.append(stop)
     return ret
 
 
@@ -196,11 +216,13 @@ election = avsp.Options.get('election', _('specifying a frame step'))
 frame_step = avsp.Options.get('frame_step', 100)
 time_step = avsp.Options.get('time_step', '0:00:05.000')
 intervals = avsp.Options.get('intervals', 10)
+only_bookmarks = avsp.Options.get('only_bookmarks', False)
 im_args = avsp.Options.get('im_args', '')
 use_dir = avsp.Options.get('use_dir', False)
 use_base = avsp.Options.get('use_base', False)
 last_ext = avsp.Options.get('last_ext', '.png')
 add_frame_number = avsp.Options.get('add_frame_number', True)
+use_subdirs = avsp.Options.get('use_subdirs', False)
 show_progress = avsp.Options.get('show_progress', True)
 
 # Check convert path
@@ -222,7 +244,9 @@ if not os.path.isfile(convert_path):
                 convert_path = avsp.GetFilename(_('Select the convert.exe executable'), 
                                                 _('Executable files') + ' (*.exe)|*.exe|' + 
                                                 _('All files') + ' (*.*)|*.*')
-                if not convert_path:
+                if convert_path:
+                    avsp.Options['convert_path'] = convert_path
+                else:
                     return
             else: return
         else:
@@ -236,7 +260,9 @@ if not os.path.isfile(convert_path):
                                _('Error'), True):
                     convert_path = avsp.GetFilename(_('Select the convert executable'), 
                                                     _('All files') + ' (*.*)|*.*')
-                    if not convert_path:
+                    if convert_path:
+                        avsp.Options['convert_path'] = convert_path
+                    else:
                         return
                 else: return
 
@@ -263,26 +289,30 @@ output_path = os.path.join(dirname, basename)
 # Ask for options
 while True:
     election_list = (_('specifying a frame step'),  _('specifying a time step'),
-                     _('specifying a number of intervals'), _('using the current boomarks'), 
-                     election)
+                     _('specifying a number of intervals'), election)
     options = avsp.GetTextEntry(title=_('Pipe RGB to ImageMagick'), 
-        message=[_('Process frames in batches by splitting the script by...'), 
+        message=[_('Piping options'), 
+                 _('Process frames in batches by splitting the script by...'), 
                  [_('Frame step'), _('Time step'), _('Number of intervals')], 
+                 _('Include only the range between bookmarks, if any'), 
+                 '', _('Output options'), 
                  _('ImageMagick processing arguments (excluding input)'), 
                  _('Choose an output directory, basename and extension'), 
                  [_('Use always this directory'), _('Use always this basename')], 
-                 [_('Add the padded frame number as suffix'), _('Show progress')]], 
-        default=[election_list, 
+                 _('Add the padded frame number as suffix'), 
+                 _('When using bookmarks, save every range to a subdirectory'), 
+                 _('Show progress')], 
+        default=['', election_list, 
                  [(frame_step, 1, None, 0, max(1, 10 ** (len(str(frame_step)) - 2))), 
-                  time_step, (intervals, 1)], im_args, output_path, 
-                  [use_dir, use_base], [add_frame_number, show_progress]], 
-        types=['list_read_only', ['spin', '', 'spin'], '', 'file_save', 
-               ['check', 'check'], ['check', 'check']], 
-        width=410)
+                  time_step, (intervals, 1)], only_bookmarks, 0, '', im_args, output_path, 
+                  [use_dir, use_base], add_frame_number, use_subdirs, show_progress], 
+        types=['sep', 'list_read_only', ['spin', '', 'spin'], 'check', 'sep', 
+               'sep', '', 'file_save', ['check', 'check'], 'check', 'check', 'check'], 
+        width=300)
     if not options:
         return
-    (election, frame_step, time_step, intervals, im_args, output_path, use_dir, 
-                            use_base, add_frame_number, show_progress) = options          
+    (election, frame_step, time_step, intervals, only_bookmarks, im_args, output_path, 
+            use_dir, use_base, add_frame_number, use_subdirs, show_progress) = options
     if election == _('specifying a time step'):
         time_step_ms = parse_time(time_step)
         if not time_step_ms:
@@ -296,20 +326,22 @@ while True:
 
 # Save default options
 output_path, ext = os.path.splitext(output_path)
-avsp.Options['convert_path'] = convert_path
+dirname, basename = os.path.split(output_path)
 avsp.Options['election'] = election
 avsp.Options['frame_step'] = frame_step
 avsp.Options['time_step'] = time_step
 avsp.Options['intervals'] = intervals
+avsp.Options['only_bookmarks'] = only_bookmarks
 avsp.Options['im_args'] = im_args
 avsp.Options['use_dir'] = use_dir
 avsp.Options['use_base'] = use_base
 if use_dir:
-    avsp.Options['dirname'] = os.path.dirname(output_path)
+    avsp.Options['dirname'] = dirname
 if use_base:
-    avsp.Options['basename'] = os.path.basename(output_path)
+    avsp.Options['basename'] = basename
 avsp.Options['last_ext'] = ext
 avsp.Options['add_frame_number'] = add_frame_number
+avsp.Options['use_subdirs'] = use_subdirs
 avsp.Options['show_progress'] = show_progress
 
 # Eval script
@@ -325,31 +357,38 @@ if clip.incorrect_colorspace:
     avsp.MsgBox(_('Colorspace must be RGB24 or (fake) YV12 (RGB48)'), _('Error'))
     return
 
-# Get the list of frames
-if election == _('using the current boomarks'):
-    frame_list = avsp.GetBookmarkList()
-    if not frame_list:
-        avsp.MsgBox(_('There is not bookmarks'), _('Error'))
-        return
-    frame_list.sort()
-    if frame_list[0] != 0:
-        frame_list[:0] = [0]
-    if frame_list[-1] == clip.vi.num_frames - 1:
-        frame_list[-1] = clip.vi.num_frames
+# Get the list of frame ranges
+if only_bookmarks:
+    bm_list = avsp.GetBookmarkList()
+    if not bm_list:
+        use_subdirs = False
+        frame_list = ((0, clip.vi.num_frames),)
     else:
-        frame_list.append(clip.vi.num_frames)
+        bm_list = sorted([bm for bm in bm_list if bm < clip.vi.num_frames])
+        if len(bm_list) % 2:
+            if not avsp.MsgBox(_('Odd number of bookmarks'),  _('Warning'), cancel=True):
+                return
+            else:
+                bm_list.append(clip.vi.num_frames - 1)
+        frame_list = [(bm, bm_list[i+1] + 1) for (i, bm) in enumerate(bm_list) if not i % 2]
 else:
-    if election == _('specifying a frame step'):
-        step = frame_step
-    elif election == _('specifying a time step'):
-        step = float(clip.vi.fps_numerator) / clip.vi.fps_denominator * time_step_ms / 1000
-    elif election == _('specifying a number of intervals'):
-        step = clip.vi.num_frames / float(intervals)
-    frame_list = float_range_list(0, clip.vi.num_frames, step)
+    use_subdirs = False
+    frame_list = ((0, clip.vi.num_frames),)
 
+# Divide each range
+if election == _('specifying a frame step'):
+    step = frame_step
+elif election == _('specifying a time step'):
+    step = float(clip.vi.fps_numerator) / clip.vi.fps_denominator * time_step_ms / 1000
+elif election == _('specifying a number of intervals'):
+    total_frames = 0
+    for frame_range in frame_list:
+        total_frames += frame_range[1] - frame_range[0] + 1
+    step = total_frames / float(intervals)
+frame_list = [float_range_list(frame_range[0], frame_range[1], step) for frame_range in frame_list]
 
 # Pipe the image data to 'convert' as RGB
-
+#
 # - Issue 1: Python 2.x doesn't support unicode args in subprocess.Popen()
 #   http://bugs.python.org/issue1759845
 #   Encoding to system's locale encoding
@@ -360,59 +399,88 @@ else:
 #   http://bugs.python.org/issue3905
 #   http://bugs.python.org/issue1124861
 encoding = sys.getfilesystemencoding()
+total_batches = 0
+if show_progress:
+    for frame_range in frame_list:
+        total_batches += len(frame_range) - 1
+    progress = avsp.ProgressBox(2 * total_batches)
 if add_frame_number:
-    digits = len(str(frame_list[-1] - 1))
+    digits = len(str(frame_list[-1][-1] - 1))
     suffix = '-%0{0}d'.format(digits)
 else:
-    digits = len(str(len(frame_list) - 1))
-if show_progress:
-    progress = avsp.ProgressBox(2 * len(frame_list[:-1]) + 1)
-for i, frame in enumerate(frame_list[:-1]):
-    if show_progress and not progress.Update(2*i, 
-                _('Piping batch {0}/{1}').format(i+1, len(frame_list[:-1])))[0]:
-        break
-    
-    # Start the pipe
-    if not add_frame_number:
-        suffix = '-{0:0{1}}'.format(i+1, digits)
-    cmd = ur'"{0}" -depth {1} -size {2}x{3} rgb:- {4} -scene {5} "{6}{7}{8}"'.format(
-          convert_path, clip.depth, clip.real_width, clip.real_height, im_args, 
-          frame, output_path, suffix, ext).encode(encoding)
-    cmd = shlex.split(cmd)
-    if os.name == 'nt':
-        info = subprocess.STARTUPINFO()
-        try:
-            info.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-            info.wShowWindow = subprocess.SW_HIDE
-        except AttributeError:
-            import _subprocess
-            info.dwFlags |= _subprocess.STARTF_USESHOWWINDOW
-            info.wShowWindow = _subprocess.SW_HIDE
-        cmd = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, 
-                               stderr=subprocess.STDOUT, startupinfo=info)
-    else:
-        cmd = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, 
-                               stderr=subprocess.STDOUT)
-    
-    # Pipe the data and wait for the process to finish
-    try:
-        for frame in range(frame, frame_list[i+1]):
-            cmd.stdin.write(clip.raw_frame(frame))
-        cmd.stdin.close()
-        if show_progress and not progress.Update(2*i+1, 
-                _('Processing batch {0}/{1}').format(i+1, len(frame_list[:-1])))[0]:
-            cmd.terminate()
+    if not total_batches:
+        for frame_range in frame_list:
+            total_batches += len(frame_range) - 1
+    digits = len(str(total_batches))
+if use_subdirs:
+    digits_frame_list = len(str(len(frame_list)))
+start_batch_number = 0
+frame_count = 0
+for range_index, frame_list in enumerate(frame_list):
+    if use_subdirs:
+        title = self.bookmarkDict.get(frame_list[0])
+        if not title:
+            title =  _('scene_{0:0{1}}').format(range_index+1, digits_frame_list)
+        dirname2 = os.path.join(dirname, title)
+        if not os.path.isdir(dirname2): os.mkdir(dirname2)
+        output_path = os.path.join(dirname2, basename)
+    for i, frame in enumerate(frame_list[:-1]):
+        i2 = i + start_batch_number
+        if show_progress and not avsp.SafeCall(progress.Update, 2*i2, 
+                    _('Piping batch {0}/{1}').format(i2+1, total_batches))[0]:
             break
-        cmd.wait()
-    except IOError, er:
-        avsp.MsgBox(_('Too much data! Try creating smaller batches'), _('Error'))
-        break
-    except Exception, err:
+        if add_frame_number:
+            scene = frame
+        else:
+            suffix = '-{0:0{1}}'.format(i2+1, digits)
+            if use_subdirs:
+                scene = frame - frame_list[0]
+            else:
+                scene = frame_count
+        
+        # Start the pipe
+        cmd = ur'"{0}" -depth {1} -size {2}x{3} rgb:- {4} -scene {5} "{6}{7}{8}"'.format(
+              convert_path, clip.depth, clip.real_width, clip.real_height, im_args, 
+              scene, output_path, suffix, ext).encode(encoding)
+        cmd = shlex.split(cmd)
+        if os.name == 'nt':
+            info = subprocess.STARTUPINFO()
+            try:
+                info.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                info.wShowWindow = subprocess.SW_HIDE
+            except AttributeError:
+                import _subprocess
+                info.dwFlags |= _subprocess.STARTF_USESHOWWINDOW
+                info.wShowWindow = _subprocess.SW_HIDE
+            cmd = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, 
+                                   stderr=subprocess.STDOUT, startupinfo=info)
+        else:
+            cmd = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, 
+                                   stderr=subprocess.STDOUT)
+        
+        # Pipe the data and wait for the process to finish
         try:
-            if cmd.poll() is None:
+            for every_frame in range(frame, frame_list[i+1]):
+                cmd.stdin.write(clip.raw_frame(every_frame))
+            frame_count += frame_list[i+1] - frame
+            cmd.stdin.close()
+            if show_progress and not avsp.SafeCall(progress.Update, 2*i2+1, 
+                    _('Processing batch {0}/{1}').format(i2+1, total_batches))[0]:
                 cmd.terminate()
-        except: pass
-        raise err
+                break
+            cmd.wait()
+        except:
+            if show_progress: avsp.SafeCall(progress.Destroy)
+            try:
+                if cmd.poll() is None:
+                    cmd.terminate()
+            except: pass
+            avsp.MsgBox(cmd.stdout.read(), _('Error'))
+            return
+    else:
+        start_batch_number += i + 1
+        continue
+    break
 else:
-    if show_progress: progress.Update(2*i+2, _('Finished'))
-if show_progress: progress.Destroy()
+    if show_progress: avsp.SafeCall(progress.Update, 2*i2+2, _('Finished'))
+if show_progress: avsp.SafeCall(progress.Destroy)
