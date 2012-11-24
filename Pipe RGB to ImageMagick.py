@@ -106,6 +106,53 @@ import ctypes
 
 import avisynth
 
+def check_executable_path(executable, check_PATH_Windows=True, check_PATH_nix=False, 
+                          error_message=None):
+    """Check if executable is in the 'tools' directory or its subdirectories or PATH"""
+    
+    def prompt_path(executable, message_prefix):
+        """Prompt for a path if not found"""
+        if avsp.MsgBox(_("{0}\n\nPress 'Accept' to specify a path. Alternatively copy\n"
+                         "the executable to the 'tools' subdirectory.".format(message_prefix)), 
+                       _('Error'), True):
+            filter = _('Executable files') + ' (*.exe)|*.exe|' if os.name == 'nt' else ''
+            filter = filter + _('All files') + ' (*.*)|*.*'
+            executable_path = avsp.GetFilename(_('Select the {0} executable').format(executable), 
+                                               filter)
+            if executable_path:
+                avsp.Options['{0}_path'.format(executable)] = executable_path
+                return True
+    
+    tools_dir = avsp.GetWindow().toolsfolder
+    executable_lower = executable.lower()
+    for parent, dirs, files in os.walk(tools_dir):
+        for file in files:
+            if file.lower() in (executable_lower, executable_lower + '.exe'):
+                avsp.Options['{0}_path'.format(executable)] = os.path.join(parent, file)
+                return True
+    if os.name == 'nt':
+        if check_PATH_Windows:
+            try:
+                path = subprocess.check_output('for %i in ({0}) do @echo. %~$PATH:i'.
+                            format(executable + '.exe'), shell=True).strip().splitlines()[0]
+                if not os.path.isfile(path) and not os.path.isfile(path + '.exe'):
+                    raise
+            except: pass
+            else:
+                avsp.Options['{0}_path'.format(executable)] = path
+                return True
+    else:
+        if check_PATH_nix:
+            try:
+               path = subprocess.check_output(['which', 'convert']).strip().splitlines()[0]
+            except: pass
+            else:
+                avsp.Options['{0}_path'.format(executable)] = path
+                return True
+    if error_message is None:
+        error_message = _("{0} not found").format(executable)
+    return prompt_path(executable, error_message)
+
 def parse_time(time):
     ''''Parse time (string) to ms
     
@@ -227,44 +274,10 @@ show_progress = avsp.Options.get('show_progress', True)
 
 # Check convert path
 if not os.path.isfile(convert_path):
-    convert_path = os.path.join(self.toolsfolder, 'convert.exe')
-    for parent, dirs, files in os.walk(self.toolsfolder):
-        for file in files:
-            if file == 'convert.exe':
-                convert_path = os.path.join(parent, file)
-                break
-        else: continue
-        break
-    else:
-        if os.name == 'nt':
-            if avsp.MsgBox(_("'convert.exe' from ImageMagick not found\n\n"
-                             "Press 'Accept' to specify a path. Alternatively copy\n"
-                             "the executable to the 'tools' subdirectory."), 
-                           _('Error'), True):
-                convert_path = avsp.GetFilename(_('Select the convert.exe executable'), 
-                                                _('Executable files') + ' (*.exe)|*.exe|' + 
-                                                _('All files') + ' (*.*)|*.*')
-                if convert_path:
-                    avsp.Options['convert_path'] = convert_path
-                else:
-                    return
-            else: return
-        else:
-            try:
-                convert_path = subprocess.check_output(
-                                ['which', 'convert']).strip().splitlines()[0]
-            except:
-                if avsp.MsgBox(_("'convert' from ImageMagick not found\n\n"
-                                 "Press 'Accept' to specify a path. Alternatively copy\n"
-                                 "the executable to the 'tools' subdirectory."), 
-                               _('Error'), True):
-                    convert_path = avsp.GetFilename(_('Select the convert executable'), 
-                                                    _('All files') + ' (*.*)|*.*')
-                    if convert_path:
-                        avsp.Options['convert_path'] = convert_path
-                    else:
-                        return
-                else: return
+    if not check_executable_path('convert', False, True,
+                                 _("'convert' from ImageMagick not found")):
+        return
+    convert_path = avsp.Options['convert_path']
 
 # Get the default output path
 output_path = avs_path = avsp.GetScriptFilename()

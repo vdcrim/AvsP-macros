@@ -123,15 +123,15 @@ def autocrop_frame(frame, tol=70):
     """Return crop values for a specific frame"""
     avs_clip = avsp.GetWindow().currentScript.AVI
     width, height = avs_clip.vi.width, avs_clip.vi.height
-    if avs_clip.clipRaw is not None: # Get pixel color from the original clip
+    version = avsp.GetWindow().version
+    if version > '2.3.1' or avs_clip.clipRaw is not None: # Get pixel color from the original clip
         avs_clip._GetFrame(frame)
         get_pixel_color = avs_clip.GetPixelRGB if avs_clip.IsRGB else avs_clip.GetPixelYUV
     else: # Get pixel color from the video preview (slower)
         bmp = wx.EmptyBitmap(width, height)
         mdc = wx.MemoryDC()
         mdc.SelectObject(bmp)
-        dc = mdc if avsp.GetWindow().version > '2.3.1' else mdc.GetHDC()
-        avs_clip.DrawFrame(frame, dc)
+        avs_clip.DrawFrame(frame, mdc.GetHDC())
         img = bmp.ConvertToImage()
         get_pixel_color = lambda x, y : (img.GetRed(x, y), img.GetGreen(x, y), img.GetBlue(x, y))
     w, h = width - 1, height - 1

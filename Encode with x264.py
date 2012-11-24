@@ -9,7 +9,7 @@ Requirements:
     
 This macro uses avs4x264mod to pipe the video data to x264. By default, 
 it expects to find "avs4x264mod.exe" and "x264.exe" in the "AvsPmod\tools" 
-directory.
+directory or in PATH.
 
 Features:
 - CRF and 2-pass ABR encoding mode, progressive and interlaced.
@@ -102,10 +102,6 @@ with this program.  If not, see <http://www.gnu.org/licenses/gpl-2.0.html>.
 # Save changes in script before encoding (True or False)
 save_avs = True
 
-# Set custom paths, e.g. ur"D:\x264.exe"
-avs4x264mod_path = ur""
-x264_path = ur""
-
 # Additional parameters to shell command 'start'
 # (see http://technet.microsoft.com/en-us/library/bb491005.aspx)
 start_params = '/belownormal /min'
@@ -158,13 +154,60 @@ avs_log_dir = ur""  #  ur""  ->  "AvsPmod\tools\x264 logs" directory
 
 
 # run in thread
-from os import getcwdu, makedirs
-from os.path import isfile, isdir, splitext, basename, join
-from sys import getfilesystemencoding
+import os
+import os.path
+import sys
 from shutil import copy2
 from subprocess import Popen
 import time
 import re
+
+def check_executable_path(executable, check_PATH_Windows=True, check_PATH_nix=False, 
+                          error_message=None):
+    """Check if executable is in the 'tools' directory or its subdirectories or PATH"""
+    
+    def prompt_path(executable, message_prefix):
+        """Prompt for a path if not found"""
+        if avsp.MsgBox(_("{0}\n\nPress 'Accept' to specify a path. Alternatively copy\n"
+                         "the executable to the 'tools' subdirectory.".format(message_prefix)), 
+                       _('Error'), True):
+            filter = _('Executable files') + ' (*.exe)|*.exe|' if os.name == 'nt' else ''
+            filter = filter + _('All files') + ' (*.*)|*.*'
+            executable_path = avsp.GetFilename(_('Select the {0} executable').format(executable), 
+                                               filter)
+            if executable_path:
+                avsp.Options['{0}_path'.format(executable)] = executable_path
+                return True
+    
+    tools_dir = avsp.GetWindow().toolsfolder
+    executable_lower = executable.lower()
+    for parent, dirs, files in os.walk(tools_dir):
+        for file in files:
+            if file.lower() in (executable_lower, executable_lower + '.exe'):
+                avsp.Options['{0}_path'.format(executable)] = os.path.join(parent, file)
+                return True
+    if os.name == 'nt':
+        if check_PATH_Windows:
+            try:
+                path = subprocess.check_output('for %i in ({0}) do @echo. %~$PATH:i'.
+                            format(executable + '.exe'), shell=True).strip().splitlines()[0]
+                if not os.path.isfile(path) and not os.path.isfile(path + '.exe'):
+                    raise
+            except: pass
+            else:
+                avsp.Options['{0}_path'.format(executable)] = path
+                return True
+    else:
+        if check_PATH_nix:
+            try:
+               path = subprocess.check_output(['which', 'convert']).strip().splitlines()[0]
+            except: pass
+            else:
+                avsp.Options['{0}_path'.format(executable)] = path
+                return True
+    if error_message is None:
+        error_message = _("{0} not found").format(executable)
+    return prompt_path(executable, error_message)
 
 # fractions module is not bundled with AvsPmod
 # best_rationals function adapted from 
@@ -187,25 +230,16 @@ def best_rationals(afloat):
             return num, den
 
 # Check paths and get avs path
-if avs4x264mod_path:
-    if not isfile(avs4x264mod_path):
-        avsp.MsgBox(_('Custom avs4x264mod path is invalid:\n') + avs4x264mod_path, 
-                    _('Error'))
+avs4x264mod_path = avsp.Options.get('avs4x264mod_path', '')
+if not os.path.isfile(avs4x264mod_path):
+    if not check_executable_path('avs4x264mod'):
         return
-else:
-    avs4x264mod_path = join(getcwdu(), 'tools', 'avs4x264mod.exe')
-    if not isfile(avs4x264mod_path):
-        avsp.MsgBox(_('avs4x264mod not found'), _('Error'))
+    avs4x264mod_path = avsp.Options['avs4x264mod_path']
+x264_path = avsp.Options.get('x264_path', '')
+if not os.path.isfile(x264_path):
+    if not check_executable_path('x264'):
         return
-if x264_path:
-    if not isfile(x264_path):
-        avsp.MsgBox(_('Custom x264 path is invalid:\n') + x264_path, _('Error'))
-        return
-else: 
-    x264_path = join(getcwdu(), 'tools', 'x264.exe')
-    if not isfile(x264_path):
-        avsp.MsgBox(_('x264 not found'), _('Error'))
-        return
+    x264_path = avsp.Options['x264_path']
 if not avsp.GetScriptFilename():
     if not avsp.SaveScript():
         return
@@ -217,7 +251,7 @@ if not avs:
 # Python 2.x doesn't support unicode args in subprocess.Popen()
 # http://bugs.python.org/issue1759845
 # Encoding to system's locale encoding
-code = getfilesystemencoding()
+code = sys.getfilesystemencoding()
 avs = avs.encode(code)
 
 # Set the prompt default values
@@ -344,7 +378,7 @@ for line in avsp.GetText().splitlines():
         out_16 = True
 
 # Prompt for x264 parameters
-avs_no_ext = splitext(avs)[0]
+avs_no_ext = os.path.splitext(avs)[0]
 csp_list = ['bt709', 'smpte170m', 'bt470bg']
 dar_list = ['4:3', '16:9', '1.85', '2.35', '2.39', '2.40']
 scan_type_list = ['Progressive', 'Interlaced (top)', 'Interlaced (bottom)', 
@@ -356,13 +390,13 @@ if any(new_csp_alias):
     rgb_flags = _('Read from avs')
 if not tc_file:
     for path in (avs_no_ext + suffix for suffix in tc_suffix):
-        if isfile(path):
+        if os.path.isfile(path):
             tc_file = path
             break
 tc_filter = (_('Text files') + ' (*.txt)|*.txt|' + _('All files') + '|*.*')
 if not qp_file:
     for path in (avs_no_ext + suffix for suffix in qp_suffix):
-        if isfile(path):
+        if os.path.isfile(path):
             qp_file = path
             break
 qp_filter = (_('QP files') + ' (*.qpfile;*.qpf;*.qp)|*.qpfile;*.qpf;*.qp|' + 
@@ -519,27 +553,27 @@ if close_tab:
 # Archive x264 log and Avisynth script
 date_time = time.strftime('[%Y-%m-%d %H.%M.%S] ', time.localtime())
 if save_log:
-    x264_log_dir = x264_log_dir if x264_log_dir else join(getcwdu(), 'tools', 'x264 logs')
-    if not isdir(x264_log_dir):
-        makedirs(x264_log_dir)
+    x264_log_dir = x264_log_dir if x264_log_dir else os.path.join(avsp.GetWindow().toolsfolder, 'x264 logs')
+    if not os.path.isdir(x264_log_dir):
+        os.makedirs(x264_log_dir)
     log = (' 2>&1 | sed -u -e "/%.\+frames.\+fps.\+eta/d" | tee "' + 
-           join(x264_log_dir, date_time + basename(output)).encode(code))
+        os.path.join(x264_log_dir, date_time + os.path.basename(output)).encode(code))
     log_crf = log + '.log"'
     log_pass1 = log + '.pass1.log"'
     log_pass2 = log + '.pass2.log"'
 else:
     log_crf = log_pass1 = log_pass2 = ''
 if save_avs_copy:
-    avs_log_dir = avs_log_dir if avs_log_dir else join(getcwdu(), 'tools', 'x264 logs')
-    if not isdir(avs_log_dir):
-        makedirs(avs_log_dir)
-    copy2(avs, join(avs_log_dir.encode(code), date_time + basename(avs)))
+    avs_log_dir = avs_log_dir if avs_log_dir else os.path.join(avsp.GetWindow().toolsfolder, 'x264 logs')
+    if not os.path.isdir(avs_log_dir):
+        os.makedirs(avs_log_dir)
+    copy2(avs, os.path.join(avs_log_dir.encode(code), date_time + os.path.basename(avs)))
 
 # Start the encoding process
 start = 'start ' + start_params + (' /b' if hide_cmd else '')
 cmd = ' cmd ' + ('/k "' if keep_cmd_open and not hide_cmd else '/c "')
 end_notice =  ' && start echo {0}"'.format(_('Encoding of "{0}" finished').format(
-                            basename(output))).encode(code) if hide_cmd else '"'
+                        os.path.basename(output))).encode(code) if hide_cmd else '"'
 args = (' "' + avs4x264mod_path + '"' + 
         ' --x264-binary "' + x264_path + '"' + 
         ' --preset ' + preset + 

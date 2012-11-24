@@ -63,45 +63,67 @@ with this program.  If not, see <http://www.gnu.org/licenses/gpl-2.0.html>.
 
 
 # run in thread
-from os import getcwdu, walk, name
-from os.path import isfile, splitext, basename, join
-from sys import getfilesystemencoding
+import os
+import os.path
+import sys
 import subprocess
 import shlex
 import wx
 
-# Check convert.exe path
-if name == 'nt':
-    convert_path = avsp.Options.get('convert_path')
-    if not convert_path or not isfile(convert_path):
-        avsp.Options['convert_path'] = None
-        for parent, dirs, files in walk('tools'):
-            for file in files:
-                if file == 'convert.exe':
-                    convert_path = join(getcwdu(), parent, file)
-                    break
+def check_executable_path(executable, check_PATH_Windows=True, check_PATH_nix=False, 
+                          error_message=None):
+    """Check if executable is in the 'tools' directory or its subdirectories or PATH"""
+    
+    def prompt_path(executable, message_prefix):
+        """Prompt for a path if not found"""
+        if avsp.MsgBox(_("{0}\n\nPress 'Accept' to specify a path. Alternatively copy\n"
+                         "the executable to the 'tools' subdirectory.".format(message_prefix)), 
+                       _('Error'), True):
+            filter = _('Executable files') + ' (*.exe)|*.exe|' if os.name == 'nt' else ''
+            filter = filter + _('All files') + ' (*.*)|*.*'
+            executable_path = avsp.GetFilename(_('Select the {0} executable').format(executable), 
+                                               filter)
+            if executable_path:
+                avsp.Options['{0}_path'.format(executable)] = executable_path
+                return True
+    
+    tools_dir = avsp.GetWindow().toolsfolder
+    executable_lower = executable.lower()
+    for parent, dirs, files in os.walk(tools_dir):
+        for file in files:
+            if file.lower() in (executable_lower, executable_lower + '.exe'):
+                avsp.Options['{0}_path'.format(executable)] = os.path.join(parent, file)
+                return True
+    if os.name == 'nt':
+        if check_PATH_Windows:
+            try:
+                path = subprocess.check_output('for %i in ({0}) do @echo. %~$PATH:i'.
+                            format(executable + '.exe'), shell=True).strip().splitlines()[0]
+                if not os.path.isfile(path) and not os.path.isfile(path + '.exe'):
+                    raise
+            except: pass
             else:
-                continue
-            break
-        else:
-            if avsp.MsgBox(_("'convert.exe' from ImageMagick not found\n\n"
-                           "Press 'Accept' to specify a path. Alternatively copy\n"
-                           "the executable to the 'tools' subdirectory."), 
-                         _('Error'), True):
-                convert_path = avsp.GetFilename(_('Select the convert.exe executable'), 
-                                                _('Executable files') + ' (*.exe)|*.exe|' + 
-                                                _('All files') + ' (*.*)|*.*')
-                if not convert_path:
-                    return
-            else: return
-        avsp.Options['convert_path'] = convert_path
-else:
-    try:
-        convert_path = subprocess.check_output(['which', 'convert']).splitlines()[0].strip()
-    except:
-        avsp.MsgBox(_("'convert' executable from ImageMagick not found"), 
-                    _('Error'))
+                avsp.Options['{0}_path'.format(executable)] = path
+                return True
+    else:
+        if check_PATH_nix:
+            try:
+               path = subprocess.check_output(['which', 'convert']).strip().splitlines()[0]
+            except: pass
+            else:
+                avsp.Options['{0}_path'.format(executable)] = path
+                return True
+    if error_message is None:
+        error_message = _("{0} not found").format(executable)
+    return prompt_path(executable, error_message)
+
+# Check convert path
+convert_path = avsp.Options.get('convert_path', '')
+if not os.path.isfile(convert_path):
+    if not check_executable_path('convert', False, True,
+                                 _("'convert' from ImageMagick not found")):
         return
+    convert_path = avsp.Options['convert_path']
 
 # Prompt for options
 speed_factor = avsp.Options.get('speed_factor', 2)
@@ -119,7 +141,7 @@ dither_cmd =  ('+dither', '-dither Riemersma', '-dither FloydSteinberg',
 dither_dict = dict(zip(dither_list, dither_cmd))
 output_path = avsp.GetScriptFilename()
 if output_path:
-    output_path = splitext(output_path)[0] + '.gif' 
+    output_path = os.path.splitext(output_path)[0] + '.gif' 
 gif_filter = (_('GIF files') + ' (*.gif)|*.gif|' + _('All files') + '|*.*')
 while True:
     options = avsp.GetTextEntry(
@@ -198,12 +220,12 @@ else:
 #   http://www.py2exe.org/index.cgi/Py2ExeSubprocessInteractions
 #   http://bugs.python.org/issue3905
 #   http://bugs.python.org/issue1124861
-code = getfilesystemencoding()
+code = sys.getfilesystemencoding()
 cmd = ur'"{0}" miff:- -dispose None -loop {1} -set delay {2} {3} {4} {5} "{6}"'.format(
       convert_path, loops, delay, add_params, dither_dict[dither], optimize, 
       output_path).encode(code)
 cmd = shlex.split(cmd)
-if name == 'nt':
+if os.name == 'nt':
     info = subprocess.STARTUPINFO()
     try:
         info.dwFlags |= subprocess.STARTF_USESHOWWINDOW

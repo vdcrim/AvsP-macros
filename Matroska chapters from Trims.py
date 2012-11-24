@@ -151,7 +151,7 @@ keep_cmd_open = True
 
 
 # run in thread
-from os import getcwdu, walk
+from os import walk
 from os.path import isfile, splitext, dirname, join
 from sys import getfilesystemencoding
 from subprocess import Popen
@@ -173,32 +173,30 @@ if trimsubs_path:
                     _('Error'))
         return
 if not vfr_path or not trimsubs_path:
-    for parent, dirs, files in walk('tools'):
+    for parent, dirs, files in walk(avsp.GetWindow().toolsfolder):
         for file in files:
             if not vfr_path:
                 if file == 'vfr.py':
-                    vfr_path = python_path + '" "' + join(getcwdu(), 
-                                                          parent, file)
+                    vfr_path = python_path + '" "' + join(parent, file)
                     if trimsubs_path:
                         break
                     else:
                         continue
                 if file == 'vfr.exe':
-                    vfr_path = join(getcwdu(), parent, file)
+                    vfr_path = join(parent, file)
                     if trimsubs_path:
                         break
                     else:
                         continue
             if not trimsubs_path:
                 if file == 'TrimSubs.py':
-                    trimsubs_path = python_path + '" "' + join(getcwdu(), 
-                                                               parent, file)
+                    trimsubs_path = python_path + '" "' + join(parent, file)
                     if vfr_path:
                         break
                     else:
                         continue
                 if file == 'TrimSubs.exe':
-                    trimsubs_path = join(getcwdu(), parent, file)
+                    trimsubs_path = join(parent, file)
                     if vfr_path:
                         break
                     else:
