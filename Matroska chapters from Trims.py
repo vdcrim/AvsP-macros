@@ -27,11 +27,12 @@ be used with x264.  The chapter file can be customized through the use
 of a template (see vfr.py documentation).  By using a template, the 
 chapters can be ordered (ordered chapters, ordered editions).
 
-There are two ways of specifying the line of the avs used:
+There are three ways of specifying the line of the avs used:
 - Parse the avs from top to bottom or vice versa, and use the first 
   line with Trims found.
 - Use a line with a specific comment at the end, e.g:
   Trim(0,99)++Trim(200,499)  # cuts
+- Directly specifying the Trims line number, starting with 1.
 
 A frame rate or timecode file (v1 or v2) is required, except for MicroDVD 
 subtitles. All other fields are optional.  The macro attempts to find 
@@ -77,13 +78,15 @@ also neeed PySubs.  Do one of the following:
   if you want.
 
 
-Date: 2012-06-08
+Date: 2012-11-27
 Latest version:     https://github.com/vdcrim/avsp-macros
 Doom9 Forum thread: http://forum.doom9.org/showthread.php?t=163653
 
 Changelog:
 - add custom parsing order and label feature. Needs vfr.py 0.8.6.1+
 - update prompt dialog
+- allow specifying directly the line used. Needs vfr.py-d024de920a
+- *nix compatibility
 
 
 Copyright (C) 2011, 2012  Diego Fernández Gosende <dfgosende@gmail.com>
@@ -110,7 +113,7 @@ save_avs = True
 
 # Set custom paths, e.g. ur"D:\vfr.py". Python is not required if using 
 # executables. vfr and TrimSubs path must include the right extension
-python_path = ur"python32"
+python_path = ur"python3"
 vfr_path = ur""
 trimsubs_path = ur""
 
@@ -142,19 +145,18 @@ encoding = ''
 # Generate OGM chapters instead of Matroska
 ogm_chapters = False
 
-# If this is set to True, the cmd windows won't close when the tasks 
-# are finished
-keep_cmd_open = True
+# If this is set to True, show the log when the tasks are finished
+show_log = False
 
 
 #-------------------------------------------------------------------------------
 
 
 # run in thread
-from os import walk
+from os import name, walk
 from os.path import isfile, splitext, dirname, join
 from sys import getfilesystemencoding
-from subprocess import Popen
+import subprocess, shlex
 
 # Check paths
 if vfr_path:
@@ -211,6 +213,9 @@ if not vfr_path or not trimsubs_path:
             avsp.MsgBox(_('TrimSubs.py not found'), _('Error'))
         return
 
+# Popen doesn't search PATH on Windows if shell=False
+shell = name == 'nt'
+
 # Set the prompt default values
 if not avsp.GetScriptFilename():
     if not avsp.SaveScript():
@@ -224,7 +229,6 @@ if not avs:
 # http://bugs.python.org/issue1759845
 # Encoding to system's locale encoding
 code = getfilesystemencoding()
-avs = avs.encode(code)
 avs_no_ext = splitext(avs)[0]
 parsing_order = _('Top to bottom') if parse_avs_top2bottom else _('Bottom to top')
 label = default_label if use_a_label_as_default else ''
@@ -276,22 +280,28 @@ subs_filter = (_('Subtitle files') + ' (*.ass;*.ssa;*.srt;*.sub)|*.ass;*.ssa;*.s
 options = avsp.GetTextEntry(
       title=_('Matroska chapters from Trims - parameters for vfr and TrimSubs'),
       message=[[_('Avisynth script parsing order for\nsetting the line with Trims used'), 
-                _('Only take a line with Trims into account\nif it ends with this commentary...')], 
+                _('Only consider the lines with Trims\nthat end with this commentary...'), 
+                _('Use directly this line, starting\nwith 1')], 
                _('Frame rate or timecode file (v1 or v2)'), 
                _('Template file'), _('Audio file'), _('Subtitle file'), 
                _('Additional parameters for vfr.py')],
-      default=[[(_('Top to bottom'), _('Bottom to top'), _(parsing_order)), label], 
+      default=[[(_('Top to bottom'), _('Bottom to top'), _(parsing_order)), label, (0, 0)], 
                (fps, timecode_filter), (template, template_filter), audio, 
                (subtitles, subs_filter), ''], 
-      types=['list_read_only', 'file_save', 'file_open', 'file_open', 'file_open'], 
+      types=[['list_read_only', '', 'spin'], 'file_save', 'file_open', 'file_open', 'file_open'], 
       width=300)
 if not options:
     return
 
 # Set parameters
-order = '' if options[0] == _('Top to bottom') else ' --reverse'
-label = ' --label ' + options[1].strip() if options[1] else ''
-fps = options[2]
+if options[2]:
+    line = ' --line ' + str(options[2])
+    order = label = ''
+else:
+    line = ''
+    order = '' if options[0] == _('Top to bottom') else ' --reverse'
+    label = ' --label ' + options[1].strip() if options[1] else ''
+fps = options[3]
 if fps:
     if isfile(fps):
         fps = ' --fps "' + fps + '"'
@@ -302,38 +312,57 @@ if fps:
 else:
     avsp.MsgBox(_('A frame rate value or timecode file is required'), _('Error'))
     return
-template = ' --template "' + options[3] + '"' if options[3] else ''
-audio = ' --input "' + options[4] + '" --merge --remove' if options[4] else ''
-subtitles = ' --input "' + options[5] + '"' if options[5] else ''
+template = ' --template "' + options[4] + '"' if options[4] else ''
+audio = ' --input "' + options[5] + '" --merge --remove' if options[5] else ''
+subtitles = ' --input "' + options[6] + '"' if options[6] else ''
 if encoding:
     encoding = ' --encoding ' + encoding
-chapters = ' --chapters "' + avs_no_ext.decode(code)
+chapters = ' --chapters "' + avs_no_ext
 chapters += '.chapters.txt"' if ogm_chapters else '.xml"'
 
 # Start processes
-cmd = 'cmd /k' if keep_cmd_open else 'cmd /c'
-vfr_args = (cmd + ' ""' + vfr_path + '"'
+vfr_args = ('"' + vfr_path + '"'
     + ' --verbose' 
-    + ' "' + avs.decode(code) + '"'
+    + ' "' + avs + '"'
+    + line
     + order
     + label
     + chapters
     + template
     + fps
     + audio 
-    + ' ' + options[6]
-    + '"')
-Popen(vfr_args.encode(code))
+    + ' ' + options[7]).encode(code)
+log = '\nVFR.PY\n\n' + vfr_args
+p = subprocess.Popen(shlex.split(vfr_args), shell=shell, 
+                     stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+stdout = p.communicate()[0]
+if p.returncode:
+    error_message = stdout.partition('Traceback (most recent call last):')
+    error_message = error_message[2] if error_message[1] else stdout
+    avsp.MsgBox(stdout, _('vfr.py rrror'))
+    return
+log = log + '\n\n' + stdout
 if subtitles or otc:
     order = ' --reversed' if order else ''
-    trimsubs_args = (cmd + ' ""' + trimsubs_path + '"'
+    trimsubs_args = ('"' + trimsubs_path + '"'
         + ' --verbose' 
-        + ' "' + avs.decode(code) + '"'
+        + ' "' + avs + '"'
+        + line
         + order
         + label
         + subtitles 
         + encoding 
         + fps 
-        + otc 
-        + '"')
-    Popen(trimsubs_args.encode(code))
+        + otc).encode(code)
+    log = log + '\n\nTRIMSUBS.PY\n\n' + trimsubs_args
+    p = subprocess.Popen(shlex.split(trimsubs_args), shell=shell, 
+                         stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    stdout = p.communicate()[0]
+    if p.returncode:
+        error_message = stdout.partition('Traceback (most recent call last):')
+        error_message = error_message[2] if error_message[1] else stdout
+        avsp.MsgBox(error_message, _('TrimSubs error'))
+        return
+    log = log + '\n\n' +  stdout
+if show_log:
+    print log
