@@ -17,7 +17,7 @@ More info on ConditionalReader:
 http://avisynth.org/mediawiki/ConditionalReader
 
 
-Date: 2012-09-11
+Date: 2012-11-27
 Latest version:
   https://github.com/vdcrim/avsp-macros
 Original macro idea from Bernardd:
@@ -68,7 +68,9 @@ default_insert_path = True
 
 
 # Run in thread
-from os.path import splitext
+import os.path
+
+self = avsp.GetWindow()
 
 # Get the bookmarks
 bmlist = avsp.GetBookmarkList(title=True)
@@ -79,8 +81,15 @@ bmlist.sort()
 
 # Prompt for options
 if not default_filename:
-    avs = avsp.GetScriptFilename()
-    if avs: default_filename = splitext(avs)[0] + suffix
+    if self.version > '2.3.1':
+        default_filename = avsp.GetScriptFilename(propose='general')
+    else:
+        default_filename = os.path.join(self.options['recentdir'], 
+            self.scriptNotebook.GetPageText(self.scriptNotebook.GetSelection()).lstrip('* '))
+default_filename2, ext = os.path.splitext(default_filename)
+if ext in ('.avs', '.avsi'):
+    default_filename = default_filename2
+default_filename += suffix
 txt_filter = (_('Text files') + ' (*.txt)|*.txt|' + _('All files') + '|*.*')
 while True:
     options = avsp.GetTextEntry(
