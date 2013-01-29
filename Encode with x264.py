@@ -55,7 +55,7 @@ parameters" if they don't have a specific field.
 See the "PREFERENCES" section below to check and customize the other features.
 
 
-Date: 2012-09-11
+Date: 2013-01-29
 Latest version:     https://github.com/vdcrim/avsp-macros
 Doom9 Forum thread: http://forum.doom9.org/showthread.php?t=163440
 
@@ -78,9 +78,10 @@ Changelog:
 - add option to run the encoding without a window and notify at the end
 - add option to close the current tab and/or preview tabs on its right
 - fix Python 2.6 compatibility
+- add support for Dither_out (Dither v1.22.0+)
 
 
-Copyright (C) 2011, 2012  Diego Fernández Gosende <dfgosende@gmail.com>
+Copyright (C) 2011-2013  Diego Fernández Gosende <dfgosende@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -287,8 +288,10 @@ re_add_params = re.compile(
     r'#\s*(?:x264|additional|add)[\s_-]*(?:parameters|params):?\s*-+(.+?)$', re.I)
 re_split_params = re.compile(r'\s+-+', re.I)
 new_csp_alias = ['', '', '']
-out_16_str = 'Dither_convey_yuv4xxp16_on_yvxx'  # Dither package
-re_out_16 = re.compile(r'[^#]*' + out_16_str + '\(.*\)')
+out_16_str1 = 'Dither_out'  # Dither package
+re_out_16_1 = re.compile(r'[^#]*' + out_16_str1 + '\(.*\)', re.I)
+out_16_str2 = 'Dither_convey_yuv4xxp16_on_yvxx'  # Dither package
+re_out_16_2 = re.compile(r'[^#]*' + out_16_str2 + '\(.*\)', re.I)
 out_16 = False
 for line in avsp.GetText().splitlines():
     if not darx or not dary:
@@ -374,7 +377,7 @@ for line in avsp.GetText().splitlines():
                 add_params += (
                             (' -' if len(param[0]) == 1 else ' --') + param[0] +  
                             (' ' + param[1] if len(param) > 1 else ''))
-    if not out_16 and re_out_16.match(line):
+    if not out_16 and (re_out_16_1.match(line) or re_out_16_2.match(line)):
         out_16 = True
 
 # Prompt for x264 parameters
@@ -534,7 +537,7 @@ if check_depth:
         return
     if input_depth != '8' and not out_16:
         avsp.MsgBox(_('Missing "{0}" call or incorrect input color depth')
-                    .format(out_16_str), _('Error'))
+                    .format(out_16_str1), _('Error'))
         return
 
 # Close tabs 
