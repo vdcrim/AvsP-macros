@@ -205,13 +205,17 @@ height = avsp.GetVideoHeight()
 header='id=ImageMagick columns={0} rows={1}\n\f:\x1A'.format(width, height)
 if use_bm_only:
     bmlist = avsp.GetBookmarkList()
+    frame_count = avsp.GetVideoFramecount()
     if not bmlist:
-        gif_range = range(0, avsp.GetVideoFramecount(), select_every)
+        gif_range = range(0, frame_count, select_every)
     else:
-        if len(bmlist) % 2 and not avsp.MsgBox(_('Odd number of bookmarks'), 
-                                               _('Warning'), cancel=True):
-            return
-        bmlist.sort()
+        bmlist = sorted([bm for bm in bmlist if bm < frame_count])
+        if len(bmlist) % 2:
+            if not avsp.MsgBox(_('Odd number of bookmarks'), 
+                               _('Warning'), cancel=True):
+                return
+            else:
+                bmlist.append(frame_count - 1)
         gif_range = []
         for i, bm in enumerate(bmlist):
             if i%2:
