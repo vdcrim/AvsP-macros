@@ -30,7 +30,7 @@ There are three ways of specifying the line of the avs used:
 - Directly specifying the Trims line number, starting with 1.
 
 
-Date: 2012-09-15
+Date: 2013-01-29
 Latest version:     https://github.com/vdcrim/avsp-macros
 Doom9 Forum thread: http://forum.doom9.org/showthread.php?t=163653
 
@@ -44,8 +44,7 @@ Changelog:
 - accept selecting the Trims line by specifying directly the line number
 
 
-
-Copyright (C) 2011, 2012  Diego Fernández Gosende <dfgosende@gmail.com>
+Copyright (C) 2011-2013  Diego Fernández Gosende <dfgosende@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -236,7 +235,9 @@ while True:
         return
     fps_list, default_fps, otc, ask_next, ask = options
     if default_fps: use_default_fps = True
-    if not ask_next: break
+    if ask_next: continue
+    if otc: break
+    else: avsp.MsgBox(_('An output path is needed'), _('Error'))
 avsp.Options['ask'] = ask
 
 # Convert FPS values to float
