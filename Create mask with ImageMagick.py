@@ -41,7 +41,7 @@ If you only need ImageMagick for this macro then do the following:
 Just install ImageMagick on your system.
 
 
-Date: 2012-09-13
+Date: 2013-01-29
 Latest version:  https://github.com/vdcrim/avsp-macros
 
 Changelog:
@@ -50,7 +50,7 @@ Changelog:
 - fix blur=0
 
 
-Copyright (C) 2012  Diego Fernández Gosende <dfgosende@gmail.com>
+Copyright (C) 2012, 2013  Diego Fernández Gosende <dfgosende@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -125,6 +125,8 @@ def check_executable_path(executable, check_PATH_Windows=True, check_PATH_nix=Fa
         error_message = _("{0} not found").format(executable)
     return prompt_path(executable, error_message)
 
+self = avsp.GetWindow()
+
 # Check convert path
 convert_path = avsp.Options.get('convert_path', '')
 if not os.path.isfile(convert_path):
@@ -135,8 +137,16 @@ if not os.path.isfile(convert_path):
 
 # Get options
 mask_path = avsp.GetScriptFilename()
-if mask_path:
-    mask_path = mask_path[:-4] + '.png'
+if not mask_path:
+    if self.version > '2.3.1':
+        mask_path = avsp.GetScriptFilename(propose='image')
+    else:
+        mask_path = os.path.join(self.options['recentdir'], 
+            self.scriptNotebook.GetPageText(self.scriptNotebook.GetSelection()).lstrip('* '))
+base, ext = os.path.splitext(mask_path)
+if ext in ('.avs', '.avsi'):
+    mask_path = base
+mask_path = mask_path + '.png' 
 while True:
     options = avsp.GetTextEntry(
             title=_('Create mask - select the vertices after pressing OK'),
@@ -172,7 +182,7 @@ else:
     avsp.InsertText('\nlast')
 
 # Get the mask vertices
-version = avsp.GetWindow().version
+version = self.version
 if version < '2.3.0':
     avsp.MsgBox(_('AvsPmod 2.3.0+ needed'), _('Error'))
     return
@@ -190,7 +200,7 @@ if len(points) < 3:
 width, height = avsp.GetVideoWidth(), avsp.GetVideoHeight()
 
 # Delete 'last'
-avs = avsp.GetWindow().currentScript
+avs = self.currentScript
 avs.SetSelection(avs.PositionFromLine(avs.GetLineCount() - 1), -1)
 avs.Clear()
 

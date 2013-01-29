@@ -32,7 +32,7 @@ If you only need ImageMagick for this macro then do the following:
 Just install ImageMagick on your system.
 
 
-Date: 2012-09-11
+Date: 2013-01-29
 Latest version:  https://github.com/vdcrim/avsp-macros
 
 Changelog:
@@ -41,7 +41,7 @@ Changelog:
 - fix Python 2.6 compatibility
 
 
-Copyright (C) 2012  Diego Fernández Gosende <dfgosende@gmail.com>
+Copyright (C) 2012, 2013  Diego Fernández Gosende <dfgosende@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -117,6 +117,8 @@ def check_executable_path(executable, check_PATH_Windows=True, check_PATH_nix=Fa
         error_message = _("{0} not found").format(executable)
     return prompt_path(executable, error_message)
 
+self = avsp.GetWindow()
+
 # Check convert path
 convert_path = avsp.Options.get('convert_path', '')
 if not os.path.isfile(convert_path):
@@ -140,8 +142,16 @@ dither_cmd =  ('+dither', '-dither Riemersma', '-dither FloydSteinberg',
                '-ordered-dither o8x8,16,16,8', '-ordered-dither o8x8,28,28,14')
 dither_dict = dict(zip(dither_list, dither_cmd))
 output_path = avsp.GetScriptFilename()
-if output_path:
-    output_path = os.path.splitext(output_path)[0] + '.gif' 
+if not output_path:
+    if self.version > '2.3.1':
+        output_path = avsp.GetScriptFilename(propose='image')
+    else:
+        output_path = os.path.join(self.options['recentdir'], 
+            self.scriptNotebook.GetPageText(self.scriptNotebook.GetSelection()).lstrip('* '))
+base, ext = os.path.splitext(output_path)
+if ext in ('.avs', '.avsi'):
+    output_path = base
+output_path = output_path + '.gif' 
 gif_filter = (_('GIF files') + ' (*.gif)|*.gif|' + _('All files') + '|*.*')
 while True:
     options = avsp.GetTextEntry(
@@ -189,7 +199,7 @@ if save_defaults:
     avsp.Options['add_params'] = add_params
     avsp.Options['notify_at_end'] = notify_at_end
 delay = float(100) / avsp.GetVideoFramerate() * select_every / speed_factor
-avs = avsp.GetWindow().currentScript
+avs = self.currentScript
 width = avsp.GetVideoWidth()
 height = avsp.GetVideoHeight()
 header='id=ImageMagick columns={0} rows={1}\n\f:\x1A'.format(width, height)

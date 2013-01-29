@@ -64,7 +64,7 @@ with this program.  If not, see <http://www.gnu.org/licenses/gpl-2.0.html>.
 # PREFERENCES
 
 # Save the avs script before starting
-save_avs = True
+save_avs = False
 
 # Default FPS for the video range outside of the Trims
 default_fps = '24000/1001'
@@ -78,6 +78,7 @@ fps_alias = {'ntsc_film': 24/1.001, 'ntsc_video': 30/1.001}
 
 
 # run in thread
+import os
 from os.path import splitext, isfile
 from sys import getfilesystemencoding
 import re
@@ -193,12 +194,23 @@ def parse_trims(reversed_=None, use_label=None, label='', use_line=None, line_nu
         return
     return trims
 
+self = avsp.GetWindow()
+
 # Prompt for fps list and output timecode path
 ask = ask_next = avsp.Options.get('ask', False)
 if save_avs and not avsp.IsScriptSaved():
     avsp.SaveScript()
 avs = avsp.GetScriptFilename()
-otc = splitext(avs)[0] + '.tc.txt' if avs else ''
+if not avs:
+    if self.version > '2.3.1':
+        avs = avsp.GetScriptFilename(propose='general')
+    else:
+        avs = os.path.join(self.options['recentdir'], 
+            self.scriptNotebook.GetPageText(self.scriptNotebook.GetSelection()).lstrip('* '))
+otc, ext = os.path.splitext(avs)
+if ext not in ('.avs', '.avsi'):
+    otc = avs
+otc = otc + '.tc.txt'
 timecode_filter = (_('Text files') + ' (*.txt)|*.txt|' + _('All files') + '|*.*')
 while True:
     if ask_next:
