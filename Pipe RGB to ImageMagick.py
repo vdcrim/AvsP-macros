@@ -15,12 +15,13 @@ Video range
 
 By default all the frames in the clip are sent.  Bookmarks can be used 
 to delimit specific frame ranges if the corresponding option is checked.  
-The first and last frame of each range must be added as bookmarks.
+The first and last frame of each range must be added as bookmarks in that 
+case.  A warning is shown if the number of bookmarks is uneven.  If the 
+user accepts then the last range goes till the end of the clip.  It's also 
+possible to only send the bookmarked frames.
 
-A warning is shown if the number of bookmarks is uneven.  If the user 
-accepts then the last range goes till the end of the clip.  If the 'only 
-bookmarks' option is checked but there's none all the video range is 
-piped.
+If one of the 'only bookmarks' options is checked but there's none all the 
+video range is piped.
 
 If the 'save every range to a subdirectory' is checked then the bookmark 
 title of the starting frame of each range is used as the directory name, 
@@ -61,7 +62,7 @@ If you only need ImageMagick for this macro then do the following:
 3) place it on the 'AvsPmod\tools' directory
 
 
-Date: 2012-11-14
+Date: 2013-03-14
 Latest version:  https://github.com/vdcrim/avsp-macros
 
 Changelog:
@@ -73,7 +74,7 @@ Changelog:
 - improve error reporting
 
 
-Copyright (C) 2012  Diego Fernández Gosende <dfgosende@gmail.com>
+Copyright (C) 2012, 2013  Diego Fernández Gosende <dfgosende@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -178,7 +179,7 @@ def float_range_list(start, stop, step):
     while start < stop:
         ret.append(int(round(start)))
         start += step
-    if ret[-1] != stop: ret.append(stop)
+    if not ret or ret[-1] != stop: ret.append(stop)
     return ret
 
 
@@ -263,6 +264,7 @@ election = avsp.Options.get('election', _('specifying a frame step'))
 frame_step = avsp.Options.get('frame_step', 100)
 time_step = avsp.Options.get('time_step', '0:00:05.000')
 intervals = avsp.Options.get('intervals', 10)
+only_bookmarks_ranges = avsp.Options.get('only_bookmarks_ranges', False)
 only_bookmarks = avsp.Options.get('only_bookmarks', False)
 im_args = avsp.Options.get('im_args', '')
 use_dir = avsp.Options.get('use_dir', False)
@@ -308,6 +310,7 @@ while True:
                  _('Process frames in batches by splitting the script by...'), 
                  [_('Frame step'), _('Time step'), _('Number of intervals')], 
                  _('Include only the range between bookmarks, if any'), 
+                 _('Include only bookmarks, if any'),
                  '', _('Output options'), 
                  _('ImageMagick processing arguments (excluding input)'), 
                  _('Choose an output directory, basename and extension'), 
@@ -317,15 +320,17 @@ while True:
                  _('Show progress')], 
         default=['', election_list, 
                  [(frame_step, 1, None, 0, max(1, 10 ** (len(str(frame_step)) - 2))), 
-                  time_step, (intervals, 1)], only_bookmarks, 0, '', im_args, output_path, 
-                  [use_dir, use_base], add_frame_number, use_subdirs, show_progress], 
-        types=['sep', 'list_read_only', ['spin', '', 'spin'], 'check', 'sep', 
+                  time_step, (intervals, 1)], only_bookmarks_ranges, only_bookmarks, 
+                  0, '', im_args, output_path, [use_dir, use_base], add_frame_number, 
+                  use_subdirs, show_progress], 
+        types=['sep', 'list_read_only', ['spin', '', 'spin'], 'check', 'check', 'sep', 
                'sep', '', 'file_save', ['check', 'check'], 'check', 'check', 'check'], 
         width=300)
     if not options:
         return
-    (election, frame_step, time_step, intervals, only_bookmarks, im_args, output_path, 
-            use_dir, use_base, add_frame_number, use_subdirs, show_progress) = options
+    (election, frame_step, time_step, intervals, only_bookmarks_ranges, 
+     only_bookmarks, im_args, output_path, use_dir, use_base, add_frame_number, 
+     use_subdirs, show_progress) = options
     if election == _('specifying a time step'):
         time_step_ms = parse_time(time_step)
         if not time_step_ms:
@@ -344,6 +349,7 @@ avsp.Options['election'] = election
 avsp.Options['frame_step'] = frame_step
 avsp.Options['time_step'] = time_step
 avsp.Options['intervals'] = intervals
+avsp.Options['only_bookmarks_ranges'] = only_bookmarks_ranges
 avsp.Options['only_bookmarks'] = only_bookmarks
 avsp.Options['im_args'] = im_args
 avsp.Options['use_dir'] = use_dir
@@ -371,19 +377,22 @@ if clip.incorrect_colorspace:
     return
 
 # Get the list of frame ranges
-if only_bookmarks:
+if only_bookmarks or only_bookmarks_ranges:
     bm_list = avsp.GetBookmarkList()
     if not bm_list:
         use_subdirs = False
         frame_list = ((0, clip.vi.num_frames),)
     else:
-        bm_list = sorted([bm for bm in bm_list if bm < clip.vi.num_frames])
-        if len(bm_list) % 2:
-            if not avsp.MsgBox(_('Odd number of bookmarks'),  _('Warning'), cancel=True):
-                return
-            else:
-                bm_list.append(clip.vi.num_frames - 1)
-        frame_list = [(bm, bm_list[i+1] + 1) for (i, bm) in enumerate(bm_list) if not i % 2]
+        if only_bookmarks:
+            frame_list = [(bm, bm + 1) for bm in bm_list]
+        else:
+            bm_list = sorted([bm for bm in bm_list if bm < clip.vi.num_frames])
+            if len(bm_list) % 2:
+                if not avsp.MsgBox(_('Odd number of bookmarks'),  _('Warning'), cancel=True):
+                    return
+                else:
+                    bm_list.append(clip.vi.num_frames - 1)
+            frame_list = [(bm, bm_list[i+1] + 1) for (i, bm) in enumerate(bm_list) if not i % 2]
 else:
     use_subdirs = False
     frame_list = ((0, clip.vi.num_frames),)
