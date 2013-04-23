@@ -32,13 +32,14 @@ If you only need ImageMagick for this macro then do the following:
 Just install ImageMagick on your system.
 
 
-Date: 2013-01-29
+Date: 2013-04-23
 Latest version:  https://github.com/vdcrim/avsp-macros
 
 Changelog:
 - fix handle inheritance issue
 - AvxSynth compatibility
 - fix Python 2.6 compatibility
+- show error if the GIF creation fails and 'notify' is checked
 
 
 Copyright (C) 2012, 2013  Diego Fernández Gosende <dfgosende@gmail.com>
@@ -266,9 +267,14 @@ try:
     cmd.stdin.close()
     avsp.HideVideoWindow()
     if notify_at_end:
-        cmd.wait()
-        avsp.MsgBox(_('GIF created'), _('Info'))
+        if cmd.wait():
+            avsp.MsgBox(_('GIF creation failed!') +'\n\n' + cmd.stdout.read(), 
+                        _('Error'))
+        else:
+            avsp.MsgBox(_('GIF created'), _('Info'))
 except:
-    if cmd.poll() is None:
-        cmd.terminate()
+    try:
+        if cmd.poll() is None:
+            cmd.terminate()
+    except: pass
     raise
