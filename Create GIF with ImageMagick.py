@@ -32,7 +32,7 @@ If you only need ImageMagick for this macro then do the following:
 Just install ImageMagick on your system.
 
 
-Date: 2013-04-23
+Date: 2013-04-26
 Latest version:  https://github.com/vdcrim/avsp-macros
 
 Changelog:
@@ -205,12 +205,11 @@ width = avsp.GetVideoWidth()
 height = avsp.GetVideoHeight()
 header='id=ImageMagick columns={0} rows={1}\n\f:\x1A'.format(width, height)
 if use_bm_only:
-    bmlist = avsp.GetBookmarkList()
     frame_count = avsp.GetVideoFramecount()
+    bmlist = sorted([bm for bm in avsp.GetBookmarkList() if bm < frame_count])
     if not bmlist:
         gif_range = range(0, frame_count, select_every)
     else:
-        bmlist = sorted([bm for bm in bmlist if bm < frame_count])
         if len(bmlist) % 2:
             if not avsp.MsgBox(_('Odd number of bookmarks'), 
                                _('Warning'), cancel=True):
