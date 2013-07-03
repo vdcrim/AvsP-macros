@@ -11,8 +11,8 @@ The frame rate of the video is needed.  A constant fps value can be
 obtained from the script in the current tab or introduced directly. 
 Timecodes format v1 and v2 files are also accepted.
 
-Current limitations:
-- Some ordered chapters can add unnecessary key frames
+Current issues:
+- Unnecessary key frames may be added with some ordered chapters
 
 
 Date: 2013-07-03
@@ -150,7 +150,6 @@ while True:
         continue
     if tc_path:
         cfr = False
-        continue
     else:
         if fps_from_script:
             fps = avsp.GetVideoFramerate()
@@ -202,7 +201,7 @@ else:
     with open(tc_path) as itc:
         header = itc.readline().strip()
         if header == '# timecode format v2':
-            tcs = [float(line) for line in lines]     
+            tcs = [float(line) for line in itc.readlines()]     
         elif header == '# timecode format v1':
             tcs = timecode_v1_to_v2(itc.readlines(), end_ms=chapters_ms[-1], 
                                     float_list=True)
@@ -224,4 +223,4 @@ else:
 
 # Save to file
 with open(qpfile_path, 'w') as f:
-    f.writelines(['{} K\n'.format(frame) for frame in frames])
+    f.writelines(['{0} K\n'.format(frame) for frame in frames])
